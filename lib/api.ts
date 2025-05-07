@@ -48,6 +48,9 @@ export async function apiRequest<T = unknown>(
   if (body && method !== 'GET') {
     requestOptions.body = JSON.stringify(body);
   }
+  
+  // Log the request for debugging
+  console.log(`Making ${method} request to: ${API_URL}${endpoint}`);
 
   try {
     // Make the request
@@ -76,12 +79,35 @@ export async function apiRequest<T = unknown>(
   }
 }
 
+// Define a proper type for query parameters
+type QueryParams = Record<string, string | number | boolean | undefined | null>;
+
 /**
  * API service with methods for common operations
  */
 export const api = {
-  get: <T = unknown>(endpoint: string, options?: Omit<RequestOptions, 'method' | 'body'>) => 
-    apiRequest<T>(endpoint, { ...options, method: 'GET' }),
+  get: <T = unknown>(endpoint: string, options?: Omit<RequestOptions, 'method' | 'body'> & { params?: QueryParams }) => {
+    // Handle query parameters if provided
+    if (options?.params) {
+      const queryParams = new URLSearchParams();
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+      
+      const queryString = queryParams.toString();
+      if (queryString) {
+        endpoint = `${endpoint}${endpoint.includes('?') ? '&' : '?'}${queryString}`;
+      }
+      
+      // Remove params from options to avoid confusion
+      const { ...restOptions } = options;
+      return apiRequest<T>(endpoint, { ...restOptions, method: 'GET' });
+    }
+    
+    return apiRequest<T>(endpoint, { ...options, method: 'GET' });
+  },
     
   post: <T = unknown>(endpoint: string, body: unknown, options?: Omit<RequestOptions, 'method'>) => 
     apiRequest<T>(endpoint, { ...options, method: 'POST', body }),

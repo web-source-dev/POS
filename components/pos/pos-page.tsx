@@ -520,6 +520,8 @@ export function POSPage() {
                 <Input
                   type="number"
                   placeholder="0.00"
+                  min={0}
+                  max={subtotal}
                   value={discountAmount}
                   onChange={(e) => setDiscountAmount(e.target.value)}
                   className="text-right h-7 px-2"

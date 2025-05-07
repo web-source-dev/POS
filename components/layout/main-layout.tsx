@@ -15,6 +15,7 @@ import {
   Settings,
   ShoppingCart,
   Truck,
+  FileText,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -75,6 +76,12 @@ export function MainLayout({ children }: MainLayoutProps) {
       label: "Finance",
       icon: DollarSign,
       active: pathname === "/finance",
+    },
+    {
+      href: "/tax",
+      label: "Tax",
+      icon: FileText,
+      active: pathname === "/tax",
     },
     {
       href: "/settings",

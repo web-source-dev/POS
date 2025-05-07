@@ -34,6 +34,15 @@ import { useToast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { format } from "date-fns"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 import financeService from "@/services/financeService"
 import { useAuth } from "@/lib/auth"
@@ -61,6 +70,15 @@ interface Expense {
   paymentMethod: string
   status: string
   originalData?: Record<string, unknown>
+}
+
+// Add ExpenseFormData interface
+interface ExpenseFormData {
+  category: string
+  description: string
+  amount: string
+  paymentMethod: string
+  date: string
 }
 
 interface FinancialSummary {
@@ -93,9 +111,506 @@ interface CashOperation {
   reason?: string;
 }
 
+// Add Expense Dialog Component
+function AddExpenseDialog({ 
+  open, 
+  onOpenChange, 
+  onExpenseAdded 
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void; 
+  onExpenseAdded: (expenseData: ExpenseFormData) => Promise<boolean>;
+}) {
+  const { toast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [expenseData, setExpenseData] = useState<ExpenseFormData>({
+    category: "Utilities",
+    description: "",
+    amount: "",
+    paymentMethod: "Cash",
+    date: new Date().toISOString().split('T')[0]
+  })
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setExpenseData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (name: string, value: string) => {
+    setExpenseData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!expenseData.category || !expenseData.amount || isNaN(parseFloat(expenseData.amount)) || parseFloat(expenseData.amount) <= 0) {
+      toast({
+        title: "Invalid input",
+        description: "Please fill in all required fields with valid values",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Call the parent's expense handler function with our form data
+      const success = await onExpenseAdded(expenseData);
+      
+      if (success) {
+        // Reset form
+        setExpenseData({
+          category: "Utilities",
+          description: "",
+          amount: "",
+          paymentMethod: "Cash",
+          date: new Date().toISOString().split('T')[0]
+        });
+        
+        // Close dialog
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      
+      // Display more specific error message if available
+      const errorMessage = error instanceof Error ? error.message : "Failed to add expense. Please try again.";
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    // Ensure we reset form data before closing
+    setExpenseData({
+      category: "Utilities",
+      description: "",
+      amount: "",
+      paymentMethod: "Cash",
+      date: new Date().toISOString().split('T')[0]
+    })
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleCloseDialog}>
+      <DialogContent 
+        className="sm:max-w-[550px]" 
+        onPointerDownOutside={(e) => {
+          // Prevent unexpected behavior when clicking outside
+          e.preventDefault()
+        }}
+        onEscapeKeyDown={() => handleCloseDialog()}
+      >
+        <DialogHeader>
+          <DialogTitle>Add New Expense</DialogTitle>
+          <DialogDescription>
+            Enter the expense details below. Click save when you&apos;re done.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category" className="text-right">
+                Category*
+              </Label>
+              <Select 
+                value={expenseData.category}
+                onValueChange={(value) => handleSelectChange('category', value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Utilities">Utilities</SelectItem>
+                  <SelectItem value="Rent">Rent</SelectItem>
+                  <SelectItem value="Salaries">Salaries</SelectItem>
+                  <SelectItem value="Inventory">Inventory</SelectItem>
+                  <SelectItem value="Marketing">Marketing</SelectItem>
+                  <SelectItem value="Maintenance">Maintenance</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="amount" className="text-right">
+                Amount*
+              </Label>
+              <Input 
+                id="amount"
+                name="amount"
+                type="number" 
+                placeholder="0.00" 
+                min="0.01" 
+                step="0.01"
+                value={expenseData.amount}
+                onChange={handleChange}
+                className="col-span-3"
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="paymentMethod" className="text-right">
+                Payment Method
+              </Label>
+              <Select 
+                value={expenseData.paymentMethod}
+                onValueChange={(value) => handleSelectChange('paymentMethod', value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Credit Card">Credit Card</SelectItem>
+                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="Check">Check</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="date" className="text-right">
+                Date
+              </Label>
+              <Input 
+                id="date"
+                name="date"
+                type="date" 
+                value={expenseData.date}
+                onChange={handleChange}
+                className="col-span-3"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="description" className="text-right pt-2">
+                Description
+              </Label>
+              <Textarea 
+                id="description"
+                name="description"
+                placeholder="Enter expense description" 
+                value={expenseData.description}
+                onChange={handleChange}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Expense
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Transaction Details Dialog
+function TransactionDetailsDialog({ 
+  open, 
+  onOpenChange, 
+  transaction 
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void; 
+  transaction: Transaction | null;
+}) {
+  if (!transaction) return null;
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return dateString
+    }
+  }
+
+  const handlePrintReceipt = () => {
+    // Implement receipt printing functionality
+    // This could open a new window with a printable receipt
+    window.alert('Printing receipt...')
+    // In a real implementation, you would redirect to a receipt page or open a print dialog
+  }
+
+  const handleCloseDialog = () => {
+    // Clean up before closing
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleCloseDialog}>
+      <DialogContent 
+        className="sm:max-w-[600px]" 
+        onPointerDownOutside={(e) => {
+          // Prevent unexpected behavior when clicking outside
+          e.preventDefault();
+        }}
+        onEscapeKeyDown={() => handleCloseDialog()}
+      >
+        <DialogHeader>
+          <DialogTitle className="text-xl">Transaction Details</DialogTitle>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge
+              variant="outline"
+              className={
+                transaction.status === "Completed" || transaction.status === "Paid"
+                  ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-500 dark:hover:bg-green-900/30"
+                  : "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-500 dark:hover:bg-amber-900/30"
+              }
+            >
+              {transaction.status}
+            </Badge>
+            <DialogDescription>
+              Transaction ID: {transaction.id}
+            </DialogDescription>
+          </div>
+        </DialogHeader>
+        
+        <div className="grid gap-5 py-4">
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Date & Time</p>
+              <p className="text-sm text-muted-foreground">{formatDate(transaction.date)}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <Receipt className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Type</p>
+              <p className="text-sm text-muted-foreground">{transaction.type}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Payment Method</p>
+              <p className="text-sm text-muted-foreground">{transaction.paymentMethod}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <ArrowUpDown className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Amount</p>
+              <p className={`text-sm font-medium ${transaction.amount < 0 ? "text-red-500" : "text-green-500"}`}>
+                {transaction.amount < 0 ? "-" : ""}PKR {Math.abs(transaction.amount).toFixed(2)}
+              </p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <Banknote className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Reference</p>
+              <p className="text-sm text-muted-foreground">{transaction.reference}</p>
+            </div>
+          </div>
+          
+          {transaction.originalData && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="font-medium mb-2">Additional Information</p>
+              <div className="text-sm">
+                {Object.entries(transaction.originalData)
+                  .filter(([key]) => !['id', 'date', 'type', 'reference', 'amount', 'paymentMethod', 'status'].includes(key))
+                  .map(([key, value]) => (
+                    <div key={key} className="flex justify-between py-1">
+                      <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                      <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter>
+          {transaction.type === "Sale" && (
+            <Button 
+              variant="outline" 
+              onClick={handlePrintReceipt}
+              className="mr-auto"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print Receipt
+            </Button>
+          )}
+          <Button onClick={handleCloseDialog}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Expense Details Dialog
+function ExpenseDetailsDialog({ 
+  open, 
+  onOpenChange, 
+  expense 
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void; 
+  expense: Expense | null;
+}) {
+  if (!expense) return null;
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return dateString
+    }
+  }
+
+  const handleCloseDialog = () => {
+    // Clean up before closing
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleCloseDialog}>
+      <DialogContent 
+        className="sm:max-w-[600px]" 
+        onPointerDownOutside={(e) => {
+          // Prevent unexpected behavior when clicking outside
+          e.preventDefault();
+        }}
+        onEscapeKeyDown={() => handleCloseDialog()}
+      >
+        <DialogHeader>
+          <DialogTitle className="text-xl">Expense Details</DialogTitle>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge
+              variant="outline"
+              className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-500 dark:hover:bg-green-900/30"
+            >
+              {expense.status}
+            </Badge>
+            <DialogDescription>
+              Expense ID: {expense.displayId || expense.expenseId || expense.id}
+            </DialogDescription>
+          </div>
+        </DialogHeader>
+        
+        <div className="grid gap-5 py-4">
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Date</p>
+              <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Amount</p>
+              <p className="text-sm font-medium">PKR {expense.amount.toFixed(2)}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <ArrowUpDown className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Category</p>
+              <p className="text-sm text-muted-foreground">{expense.category}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+            <Banknote className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Payment Method</p>
+              <p className="text-sm text-muted-foreground">{expense.paymentMethod}</p>
+            </div>
+          </div>
+          
+          {expense.description && (
+            <div className="grid grid-cols-[25px_1fr] items-start gap-2">
+              <Receipt className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="font-medium">Description</p>
+                <p className="text-sm text-muted-foreground">{expense.description}</p>
+              </div>
+            </div>
+          )}
+          
+          {expense.originalData && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="font-medium mb-2">Additional Information</p>
+              <div className="text-sm">
+                {Object.entries(expense.originalData)
+                  .filter(([key]) => !['id', 'expenseId', 'displayId', 'date', 'category', 'description', 'amount', 'paymentMethod', 'status'].includes(key))
+                  .map(([key, value]) => (
+                    <div key={key} className="flex justify-between py-1">
+                      <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                      <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter>
+          <Button onClick={handleCloseDialog}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function FinancePage() {
   const { toast } = useToast()
   const { isAuthenticated } = useAuth()
+  
+  // Helper to get first day of current year
+  const getFirstDayOfYear = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), 0, 1); // January 1st of current year
+  };
   
   // Component state
   const [searchTerm, setSearchTerm] = useState("")
@@ -107,20 +622,20 @@ export function FinancePage() {
   const [operationType, setOperationType] = useState("add")
   const [operationAmount, setOperationAmount] = useState("")
   const [operationReason, setOperationReason] = useState("")
+  // Set date range to current year
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | { from: Date; to?: Date } | undefined>({
-    from: new Date(),
+    from: getFirstDayOfYear(),
     to: new Date(),
   })
   const [transactionType, setTransactionType] = useState("all")
   
-  // New expense state
-  const [newExpense, setNewExpense] = useState({
-    category: "Utilities",
-    description: "",
-    amount: "",
-    paymentMethod: "Cash",
-    date: new Date().toISOString().split('T')[0]
-  })
+  // Modal states
+  const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null)
+  const [transactionDetailsOpen, setTransactionDetailsOpen] = useState(false)
+  const [expenseDetailsOpen, setExpenseDetailsOpen] = useState(false)
+  
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -158,7 +673,7 @@ export function FinancePage() {
   const fetchFinancialData = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch summary data
+      // Fetch summary data (still keep this as today for the summary cards)
       const summaryData = await financeService.getFinancialSummary({ period: 'today' })
       setSummary(summaryData as FinancialSummary)
       
@@ -181,6 +696,11 @@ export function FinancePage() {
       })
     } finally {
       setLoading(false)
+      
+      // Make sure to reset dialog states to prevent any overlay issues
+      setTransactionDetailsOpen(false)
+      setExpenseDetailsOpen(false)
+      setAddExpenseDialogOpen(false)
     }
   }, [fetchTransactions, toast])
   
@@ -288,39 +808,21 @@ export function FinancePage() {
     }
   }
   
-  const handleAddExpense = async () => {
-    if (!newExpense.category || !newExpense.amount || isNaN(parseFloat(newExpense.amount)) || parseFloat(newExpense.amount) <= 0) {
-      toast({
-        title: "Invalid input",
-        description: "Please fill in all required fields with valid values",
-        variant: "destructive",
-      })
-      return
-    }
-    
+  const handleAddExpense = async (expenseFormData: ExpenseFormData) => {
     try {
       setLoading(true)
       
       await financeService.addExpense({
-        category: newExpense.category,
-        description: newExpense.description,
-        amount: parseFloat(newExpense.amount),
-        paymentMethod: newExpense.paymentMethod,
-        date: new Date(newExpense.date)
+        category: expenseFormData.category,
+        description: expenseFormData.description,
+        amount: parseFloat(expenseFormData.amount),
+        paymentMethod: expenseFormData.paymentMethod,
+        date: new Date(expenseFormData.date)
       })
       
       toast({
         title: "Success",
         description: "Expense added successfully",
-      })
-      
-      // Reset form
-      setNewExpense({
-        category: "Utilities",
-        description: "",
-        amount: "",
-        paymentMethod: "Cash",
-        date: new Date().toISOString().split('T')[0]
       })
       
       // Refresh expenses
@@ -332,13 +834,15 @@ export function FinancePage() {
       setSummary(summaryData as FinancialSummary)
       
       // Refresh cash drawer if cash payment
-      if (newExpense.paymentMethod === 'Cash') {
+      if (expenseFormData.paymentMethod === 'Cash') {
         const drawerData = await financeService.getCashDrawerData()
         setCashDrawerData(drawerData as CashDrawerData)
       }
       
       // Refresh transactions
       await fetchTransactions()
+      
+      return true
     } catch (error) {
       console.error("Error adding expense:", error)
       
@@ -350,6 +854,8 @@ export function FinancePage() {
         description: errorMessage,
         variant: "destructive",
       })
+      
+      return false
     } finally {
       setLoading(false)
     }
@@ -374,6 +880,16 @@ export function FinancePage() {
       return dateString
     }
   }
+
+  // Add useEffect to ensure modal state cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      // Clean up modal states on component unmount
+      setTransactionDetailsOpen(false);
+      setExpenseDetailsOpen(false);
+      setAddExpenseDialogOpen(false);
+    };
+  }, []);
 
   if (loading && !summary) {
     return (
@@ -593,10 +1109,23 @@ export function FinancePage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedTransaction(transaction);
+                                setTransactionDetailsOpen(true);
+                              }}>
+                                View Details
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {transaction.type === "Sale" && (
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  setSelectedTransaction(transaction);
+                                  setTransactionDetailsOpen(true);
+                                  // After a short delay to ensure dialog is open, trigger print
+                                  setTimeout(() => {
+                                    window.alert('Printing receipt...');
+                                    // In a real implementation, this would trigger the print logic
+                                  }, 100);
+                                }}>
                                   <Printer className="mr-2 h-4 w-4" />
                                   Print Receipt
                                 </DropdownMenuItem>
@@ -738,7 +1267,7 @@ export function FinancePage() {
                 <CardTitle>Expense Management</CardTitle>
                 <CardDescription>Track and manage business expenses</CardDescription>
               </div>
-              <Button type="button" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+              <Button onClick={() => setAddExpenseDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Expense
               </Button>
@@ -785,9 +1314,22 @@ export function FinancePage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedExpense(expense);
+                                setExpenseDetailsOpen(true);
+                              }}>
+                                View Details
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -795,95 +1337,30 @@ export function FinancePage() {
                 </Table>
               )}
               
-              {/* Add expense form */}
-              <div className="mt-8 border rounded-lg p-4">
-                <h3 className="text-lg font-medium mb-4">Add New Expense</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Category*</label>
-                    <Select 
-                      value={newExpense.category}
-                      onValueChange={(value) => setNewExpense({...newExpense, category: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Utilities">Utilities</SelectItem>
-                        <SelectItem value="Rent">Rent</SelectItem>
-                        <SelectItem value="Salaries">Salaries</SelectItem>
-                        <SelectItem value="Inventory">Inventory</SelectItem>
-                        <SelectItem value="Marketing">Marketing</SelectItem>
-                        <SelectItem value="Maintenance">Maintenance</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Amount*</label>
-                    <Input 
-                      type="number" 
-                      placeholder="0.00" 
-                      min="0.01" 
-                      step="0.01"
-                      value={newExpense.amount}
-                      onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Payment Method</label>
-                    <Select 
-                      value={newExpense.paymentMethod}
-                      onValueChange={(value) => setNewExpense({...newExpense, paymentMethod: value})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select payment method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Cash">Cash</SelectItem>
-                        <SelectItem value="Credit Card">Credit Card</SelectItem>
-                        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                        <SelectItem value="Check">Check</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Date</label>
-                    <Input 
-                      type="date" 
-                      value={newExpense.date}
-                      onChange={(e) => setNewExpense({...newExpense, date: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-medium mb-1 block">Description</label>
-                    <Textarea 
-                      placeholder="Enter expense description" 
-                      value={newExpense.description}
-                      onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
-                    />
-                  </div>
-                </div>
-                
-                <div className="mt-4 flex justify-end">
-                  <Button 
-                    onClick={handleAddExpense}
-                    disabled={loading || !newExpense.category || !newExpense.amount}
-                  >
-                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                    Add Expense
-                  </Button>
-                </div>
-              </div>
+              {/* The add expense form is now in a dialog */}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <AddExpenseDialog 
+        open={addExpenseDialogOpen} 
+        onOpenChange={setAddExpenseDialogOpen} 
+        onExpenseAdded={handleAddExpense}
+      />
+
+      <TransactionDetailsDialog
+        open={transactionDetailsOpen}
+        onOpenChange={setTransactionDetailsOpen}
+        transaction={selectedTransaction}
+      />
+
+      <ExpenseDetailsDialog
+        open={expenseDetailsOpen}
+        onOpenChange={setExpenseDetailsOpen}
+        expense={selectedExpense}
+      />
     </div>
   )
 }

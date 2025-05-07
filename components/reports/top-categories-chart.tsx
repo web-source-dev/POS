@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "@/components/ui/chart"
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "@/components/ui/chart"
 import reportService from "@/services/reportService"
 
 interface CategoryData {
@@ -26,7 +26,24 @@ export function TopCategoriesChart({ timeframe = "monthly" }: { timeframe?: stri
       try {
         setLoading(true)
         const response = await reportService.getCategorySales(timeframe) as CategoryResponse
-        setData(response.chartData)
+        console.log(response)
+        
+        // Validate response data structure
+        if (!response || !response.chartData || !Array.isArray(response.chartData)) {
+          console.error("Invalid category data format:", response)
+          throw new Error("Invalid data format received from server")
+        }
+        
+        // Validate each data point
+        const validData = response.chartData.filter(item => 
+          item && typeof item.name === 'string' && typeof item.value === 'number'
+        )
+        
+        if (validData.length === 0) {
+          throw new Error("No valid category data found")
+        }
+        
+        setData(validData)
         setError(null)
       } catch (err) {
         console.error("Failed to fetch category data:", err)
@@ -52,24 +69,13 @@ export function TopCategoriesChart({ timeframe = "monthly" }: { timeframe?: stri
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          outerRadius={80}
-          fill="#8884d8"
-          dataKey="value"
-          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip
-          formatter={(value: number) => [`${value}%`, "Percentage"]}
+    <ResponsiveContainer width="100%" height={350}>
+      <BarChart data={data} >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="name" />
+        <YAxis />
+        <Tooltip 
+          formatter={(value: number) => [`${value}`, "Value"]}
           contentStyle={{
             backgroundColor: "hsl(var(--background))",
             borderColor: "hsl(var(--border))",
@@ -77,8 +83,12 @@ export function TopCategoriesChart({ timeframe = "monthly" }: { timeframe?: stri
           itemStyle={{ color: "hsl(var(--foreground))" }}
           labelStyle={{ color: "hsl(var(--foreground))" }}
         />
-        <Legend />
-      </PieChart>
+        <Bar dataKey="value">
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   )
 }

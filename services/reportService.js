@@ -62,7 +62,14 @@ const reportService = {
       queryParams.append('timeframe', timeframe);
       
       const queryString = `?${queryParams.toString()}`;
-      return await api.get(`/reports/categories${queryString}`);
+      const response = await api.get(`/reports/categories${queryString}`);
+      
+      // Ensure the response has the expected structure
+      if (!response || !response.chartData) {
+        throw new Error('Invalid response format from category sales API');
+      }
+      
+      return response;
     } catch (error) {
       console.error('Error fetching category sales:', error);
       throw error;
