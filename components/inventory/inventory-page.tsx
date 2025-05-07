@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { ArrowDownToLine, ArrowUpDown, Box, Plus, Search, Trash2, AlertCircle } from "lucide-react"
+import { ArrowDownToLine, ArrowUpDown, Box, Plus, Search, Trash2, AlertCircle, Edit, Package } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { AddItemDialog } from "@/components/inventory/add-item-dialog"
+import { UpdateItemDialog } from "@/components/inventory/update-item-dialog"
+import { UpdateStockDialog } from "@/components/inventory/update-stock-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { inventoryService } from "@/lib/inventory-service"
 import { useAuth } from "@/lib/auth"
@@ -44,6 +46,9 @@ export function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [addItemDialogOpen, setAddItemDialogOpen] = useState(false)
+  const [updateItemDialogOpen, setUpdateItemDialogOpen] = useState(false)
+  const [updateStockDialogOpen, setUpdateStockDialogOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null)
 
@@ -99,6 +104,24 @@ export function InventoryPage() {
 
   const handleAddItem = () => {
     loadInventoryData()
+  }
+
+  const handleUpdateItem = () => {
+    loadInventoryData()
+  }
+
+  const handleUpdateStock = () => {
+    loadInventoryData()
+  }
+
+  const handleEditItem = (item: InventoryItem) => {
+    setSelectedItem(item)
+    setUpdateItemDialogOpen(true)
+  }
+
+  const handleEditStock = (item: InventoryItem) => {
+    setSelectedItem(item)
+    setUpdateStockDialogOpen(true)
   }
 
   const handleExport = () => {
@@ -312,7 +335,13 @@ export function InventoryPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => confirmDelete(item)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditStock(item)} title="Update Stock">
+                              <Package className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditItem(item)} title="Edit Item">
+                              <Edit className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => confirmDelete(item)} title="Delete Item">
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
@@ -373,7 +402,13 @@ export function InventoryPage() {
                         <TableCell className="text-right">PKR {item.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => confirmDelete(item)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditStock(item)} title="Update Stock">
+                              <Package className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditItem(item)} title="Edit Item">
+                              <Edit className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => confirmDelete(item)} title="Delete Item">
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
@@ -428,7 +463,13 @@ export function InventoryPage() {
                         <TableCell className="text-right">PKR {item.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => confirmDelete(item)}>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditStock(item)} title="Update Stock">
+                              <Package className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditItem(item)} title="Edit Item">
+                              <Edit className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => confirmDelete(item)} title="Delete Item">
                               <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
@@ -500,6 +541,20 @@ export function InventoryPage() {
         open={addItemDialogOpen} 
         onOpenChange={setAddItemDialogOpen} 
         onItemAdded={handleAddItem} 
+      />
+
+      <UpdateItemDialog
+        open={updateItemDialogOpen}
+        onOpenChange={setUpdateItemDialogOpen}
+        onItemUpdated={handleUpdateItem}
+        item={selectedItem}
+      />
+
+      <UpdateStockDialog
+        open={updateStockDialogOpen}
+        onOpenChange={setUpdateStockDialogOpen}
+        onStockUpdated={handleUpdateStock}
+        item={selectedItem}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
