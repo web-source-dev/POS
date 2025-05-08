@@ -16,6 +16,8 @@ import {
   ShoppingCart,
   Truck,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -24,6 +26,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { ModeToggle } from "@/components/mode-toggle"
 import { useAuth } from "@/lib/auth"
 import { UserAuthMenu } from "@/components/auth/user-auth-menu"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -32,6 +35,7 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const { isAdmin } = useAuth()
 
   const routes = [
@@ -134,34 +138,81 @@ export function MainLayout({ children }: MainLayoutProps) {
       </Sheet>
 
       {/* Desktop Navigation */}
-      <div className="hidden lg:flex h-full w-72 flex-col fixed inset-y-0 z-50">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-bold mb-1">POS System</h2>
-          <p className="text-sm text-muted-foreground">Inventory & POS System</p>
+      <div 
+        className={cn(
+          "hidden lg:flex h-full flex-col fixed inset-y-0 z-50 transition-all duration-300",
+          collapsed ? "w-20" : "w-72"
+        )}
+      >
+        <div className={cn(
+          "p-6 border-b flex items-center justify-between",
+          collapsed && "p-4"
+        )}>
+          {!collapsed && (
+            <div>
+              <h2 className="text-xl font-bold mb-1">POS System</h2>
+              <p className="text-sm text-muted-foreground">Inventory & POS System</p>
+            </div>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn("ml-auto")} 
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
         </div>
         <div className="flex flex-col p-3 space-y-1 flex-1">
-          {routes.map((route) => (
-            <Link
-              key={route.href}
-              href={route.href}
-              className={cn(
-                "flex items-center gap-x-2 text-sm font-medium px-3 py-2 rounded-md transition-colors",
-                route.active ? "bg-primary text-primary-foreground" : "hover:bg-muted",
-              )}
-            >
-              <route.icon className="h-5 w-5" />
-              {route.label}
-            </Link>
-          ))}
+          <TooltipProvider>
+            {routes.map((route) => (
+              collapsed ? (
+                <Tooltip key={route.href} delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={route.href}
+                      className={cn(
+                        "flex items-center justify-center py-2 rounded-md transition-colors",
+                        route.active ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+                      )}
+                    >
+                      <route.icon className="h-5 w-5" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {route.label}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  className={cn(
+                    "flex items-center gap-x-2 text-sm font-medium px-3 py-2 rounded-md transition-colors",
+                    route.active ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+                  )}
+                >
+                  <route.icon className="h-5 w-5" />
+                  {route.label}
+                </Link>
+              )
+            ))}
+          </TooltipProvider>
         </div>
-        <div className="p-4 border-t flex items-center justify-between">
-          <UserAuthMenu />
+        <div className={cn(
+          "p-4 border-t flex items-center",
+          collapsed ? "justify-center" : "justify-between"
+        )}>
+          {!collapsed && <UserAuthMenu />}
           <ModeToggle />
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="lg:pl-72 h-full">
+      <div className={cn(
+        "h-full transition-all duration-300",
+        collapsed ? "lg:pl-20" : "lg:pl-72"
+      )}>
         <div className="h-full pt-0 lg:pt-0">{children}</div>
       </div>
     </div>

@@ -80,10 +80,10 @@ export function InventoryValueChart() {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `PKR ${value / 1000}k`}
+          tickFormatter={(value) => `Rs ${value / 1000}k`}
         />
         <Tooltip
-          formatter={(value: number) => [`PKR ${value.toLocaleString()}`, "Inventory Value"]}
+          formatter={(value: number) => [`Rs ${value.toLocaleString()}`, "Inventory Value"]}
           contentStyle={{
             backgroundColor: "hsl(var(--background))",
             borderColor: "hsl(var(--border))",

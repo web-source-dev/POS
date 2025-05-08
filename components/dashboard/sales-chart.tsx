@@ -69,11 +69,11 @@ export function SalesChart() {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `PKR ${value}`}
+          tickFormatter={(value) => `Rs ${value}`}
         />
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         <Tooltip
-          formatter={(value: number) => [`PKR ${value}`, "Sales"]}
+          formatter={(value: number) => [`Rs ${value}`, "Sales"]}
           contentStyle={{
             backgroundColor: "hsl(var(--background))",
             borderColor: "hsl(var(--border))",

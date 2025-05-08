@@ -95,7 +95,7 @@ export function SalesAnalytics() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">PKR {salesData?.summary.totalSales.toFixed(2) || "0.00"}</div>
+            <div className="text-2xl font-bold">Rs {salesData?.summary.totalSales.toFixed(2) || "0.00"}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
               <Calendar className="mr-1 h-4 w-4" />
               {timeframe === "daily" ? "Last 7 days" : 
@@ -112,7 +112,7 @@ export function SalesAnalytics() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">PKR {salesData?.summary.averageSale.toFixed(2) || "0.00"}</div>
+            <div className="text-2xl font-bold">Rs {salesData?.summary.averageSale.toFixed(2) || "0.00"}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
               <TrendingUp className="mr-1 h-4 w-4" />
               Per transaction
@@ -160,9 +160,9 @@ export function SalesAnalytics() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={salesData.chartData}>
                     <XAxis dataKey="name" />
-                    <YAxis tickFormatter={(value) => `PKR ${value}`} />
+                    <YAxis tickFormatter={(value) => `Rs ${value}`} />
                     <Tooltip 
-                      formatter={(value: number) => [`PKR ${value.toFixed(2)}`, '']}
+                      formatter={(value: number) => [`Rs ${value.toFixed(2)}`, '']}
                       labelFormatter={(label) => `Date: ${label}`}
                     />
                     <Legend />

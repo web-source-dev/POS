@@ -190,7 +190,7 @@ export function UpdateItemDialog({ open, onOpenChange, onItemUpdated, item }: Up
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="price" className="text-right">
-                Price (PKR)
+                Price (Rs)
               </Label>
               <Input
                 id="price"

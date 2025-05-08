@@ -65,10 +65,10 @@ export function SalesReportChart({ timeframe = "daily" }: { timeframe?: string }
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `PKR ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          tickFormatter={(value) => `Rs ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
         />
         <Tooltip
-          formatter={(value: number, name: string) => [`PKR ${value}`, name === "sales" ? "Sales" : "Profit"]}
+          formatter={(value: number, name: string) => [`Rs ${value}`, name === "sales" ? "Sales" : "Profit"]}
           contentStyle={{
             backgroundColor: "hsl(var(--background))",
             borderColor: "hsl(var(--border))",

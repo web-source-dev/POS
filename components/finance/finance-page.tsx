@@ -427,7 +427,7 @@ function TransactionDetailsDialog({
             <div>
               <p className="font-medium">Amount</p>
               <p className={`text-sm font-medium ${transaction.amount < 0 ? "text-red-500" : "text-green-500"}`}>
-                {transaction.amount < 0 ? "-" : ""}PKR {Math.abs(transaction.amount).toFixed(2)}
+                {transaction.amount < 0 ? "-" : ""}Rs {Math.abs(transaction.amount).toFixed(2)}
               </p>
             </div>
           </div>
@@ -545,7 +545,7 @@ function ExpenseDetailsDialog({
             <CreditCard className="h-5 w-5 text-muted-foreground" />
             <div>
               <p className="font-medium">Amount</p>
-              <p className="text-sm font-medium">PKR {expense.amount.toFixed(2)}</p>
+              <p className="text-sm font-medium">Rs {expense.amount.toFixed(2)}</p>
             </div>
           </div>
           
@@ -751,9 +751,9 @@ export function FinancePage() {
       let successMessage = "Cash operation completed successfully"
       
       if (operationType === 'add') {
-        successMessage = `PKR ${operationAmount} added to cash drawer successfully`
+        successMessage = `Rs ${operationAmount} added to cash drawer successfully`
       } else if (operationType === 'remove') {
-        successMessage = `PKR ${operationAmount} removed from cash drawer successfully`
+        successMessage = `Rs ${operationAmount} removed from cash drawer successfully`
       } else if (operationType === 'close') {
         successMessage = `Cash drawer closed successfully`
       }
@@ -923,7 +923,7 @@ export function FinancePage() {
             <Banknote className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">PKR {summary?.cashBalance?.toFixed(2) || '0.00'}</div>
+            <div className="text-2xl font-bold">Rs {summary?.cashBalance?.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Updated as of {formatDate(summary?.lastUpdated || new Date().toString())}
             </p>
@@ -936,7 +936,7 @@ export function FinancePage() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">PKR {summary?.todaySales?.amount.toFixed(2) || '0.00'}</div>
+            <div className="text-2xl font-bold">Rs {summary?.todaySales?.amount.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground mt-1">
               From {summary?.todaySales?.count || 0} {summary?.todaySales?.count === 1 ? 'transaction' : 'transactions'}
             </p>
@@ -949,7 +949,7 @@ export function FinancePage() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">PKR {summary?.todayExpenses?.amount.toFixed(2) || '0.00'}</div>
+            <div className="text-2xl font-bold">Rs {summary?.todayExpenses?.amount.toFixed(2) || '0.00'}</div>
             <p className="text-xs text-muted-foreground mt-1">
               From {summary?.todayExpenses?.count || 0} {summary?.todayExpenses?.count === 1 ? 'transaction' : 'transactions'}
             </p>
@@ -963,7 +963,7 @@ export function FinancePage() {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${summary?.todayNetCashFlow && summary?.todayNetCashFlow < 0 ? 'text-red-500' : 'text-green-500'}`}>
-              {summary?.todayNetCashFlow && summary?.todayNetCashFlow < 0 ? '-' : ''}PKR {Math.abs(summary?.todayNetCashFlow || 0).toFixed(2)}
+              {summary?.todayNetCashFlow && summary?.todayNetCashFlow < 0 ? '-' : ''}Rs {Math.abs(summary?.todayNetCashFlow || 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {summary?.todayNetCashFlow && summary?.todayNetCashFlow < 0 
@@ -1086,7 +1086,7 @@ export function FinancePage() {
                             transaction.amount < 0 ? "text-red-500" : "text-green-500"
                           }`}
                         >
-                          {transaction.amount < 0 ? "-" : ""}PKR {Math.abs(transaction.amount).toFixed(2)}
+                          {transaction.amount < 0 ? "-" : ""}Rs {Math.abs(transaction.amount).toFixed(2)}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -1164,23 +1164,23 @@ export function FinancePage() {
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Opening Balance:</span>
-                          <span className="font-medium">PKR {cashDrawerData?.openingBalance.toFixed(2) || '0.00'}</span>
+                          <span className="font-medium">Rs {cashDrawerData?.openingBalance.toFixed(2) || '0.00'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Cash Sales:</span>
-                          <span className="font-medium text-green-500">+PKR {cashDrawerData?.cashSales.toFixed(2) || '0.00'}</span>
+                          <span className="font-medium text-green-500">+Rs {cashDrawerData?.cashSales.toFixed(2) || '0.00'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Cash Payments:</span>
-                          <span className="font-medium text-red-500">-PKR {cashDrawerData?.cashExpenses.toFixed(2) || '0.00'}</span>
+                          <span className="font-medium text-red-500">-Rs {cashDrawerData?.cashExpenses.toFixed(2) || '0.00'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Expected Balance:</span>
-                          <span className="font-medium">PKR {cashDrawerData?.expectedBalance.toFixed(2) || '0.00'}</span>
+                          <span className="font-medium">Rs {cashDrawerData?.expectedBalance.toFixed(2) || '0.00'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Current Balance:</span>
-                          <span className="font-medium">PKR {cashDrawerData?.currentBalance.toFixed(2) || '0.00'}</span>
+                          <span className="font-medium">Rs {cashDrawerData?.currentBalance.toFixed(2) || '0.00'}</span>
                         </div>
                       </div>
                     )}
@@ -1304,7 +1304,7 @@ export function FinancePage() {
                         <TableCell>{expense.category}</TableCell>
                         <TableCell>{expense.description}</TableCell>
                         <TableCell>{expense.paymentMethod}</TableCell>
-                        <TableCell className="text-right font-medium">PKR {expense.amount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">Rs {expense.amount.toFixed(2)}</TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"

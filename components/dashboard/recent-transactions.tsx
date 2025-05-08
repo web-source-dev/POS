@@ -77,7 +77,7 @@ export function RecentTransactions() {
             <TableCell>{transaction.customerName || "Guest Customer"}</TableCell>
             <TableCell className="text-muted-foreground text-sm">{formatDate(transaction.date)}</TableCell>
             <TableCell className="text-right">{transaction.items.length}</TableCell>
-            <TableCell className="text-right font-medium">PKR {transaction.total.toFixed(2)}</TableCell>
+            <TableCell className="text-right font-medium">Rs {transaction.total.toFixed(2)}</TableCell>
           </TableRow>
         ))}
       </TableBody>

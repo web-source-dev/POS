@@ -101,7 +101,7 @@ export function MainDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  PKR {loading ? "..." : financialSummary?.todaySales.amount.toFixed(2) || "0.00"}
+                  Rs {loading ? "..." : financialSummary?.todaySales.amount.toFixed(2) || "0.00"}
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center mt-1">
                   {/* When we have historical data, we could show a trend */}
@@ -118,7 +118,7 @@ export function MainDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  PKR {loading ? "..." : financialSummary?.todayExpenses.amount.toFixed(2) || "0.00"}
+                  Rs {loading ? "..." : financialSummary?.todayExpenses.amount.toFixed(2) || "0.00"}
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center mt-1">
                   <TrendingDown className="mr-1 h-4 w-4 text-red-600" />
@@ -147,7 +147,7 @@ export function MainDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  PKR {loading ? "..." : inventoryStats?.totalValue.toFixed(0) || "0"}
+                  Rs {loading ? "..." : inventoryStats?.totalValue.toFixed(0) || "0"}
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center mt-1">
                   <ArrowUp className="mr-1 h-4 w-4 text-green-600" />

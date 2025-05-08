@@ -183,7 +183,7 @@ export function POSPage() {
     setChange(cashValue - total)
     toast({
       title: "Change Calculated",
-      description: `Change: PKR ${(cashValue - total).toFixed(2)}`,
+      description: `Change: Rs ${(cashValue - total).toFixed(2)}`,
     })
   }
 
@@ -262,7 +262,7 @@ export function POSPage() {
 
       toast({
         title: "Sale Completed",
-        description: `Sale of ${cart.length} items for PKR ${total.toFixed(2)} has been completed.`,
+        description: `Sale of ${cart.length} items for Rs ${total.toFixed(2)} has been completed.`,
       })
       
 
@@ -361,7 +361,7 @@ export function POSPage() {
                     </div>
                   </CardContent>
                   <CardFooter className="p-4 pt-2 flex justify-between items-center">
-                    <p className="font-bold">PKR {item.price.toFixed(2)}</p>
+                    <p className="font-bold">Rs {item.price.toFixed(2)}</p>
                     <Button size="sm" variant="secondary" disabled={item.stock <= 0}>
                       <Plus className="h-4 w-4 mr-1" /> Add
                     </Button>
@@ -394,7 +394,7 @@ export function POSPage() {
                         </Badge>
                       </CardContent>
                       <CardFooter className="p-4 pt-2 flex justify-between items-center">
-                        <p className="font-bold">PKR {item.price.toFixed(2)}</p>
+                        <p className="font-bold">Rs {item.price.toFixed(2)}</p>
                         <Button size="sm" variant="secondary" disabled={item.stock <= 0}>
                           <Plus className="h-4 w-4 mr-1" /> Add
                         </Button>
@@ -477,7 +477,7 @@ export function POSPage() {
                         </Button>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">PKR {(item.price * item.quantity).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">Rs {(item.price * item.quantity).toFixed(2)}</TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -512,7 +512,7 @@ export function POSPage() {
             
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>PKR {subtotal.toFixed(2)}</span>
+              <span>Rs {subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Discount</span>
@@ -531,7 +531,7 @@ export function POSPage() {
             <Separator className="my-2" />
             <div className="flex justify-between font-bold">
               <span>Total</span>
-              <span>PKR {total.toFixed(2)}</span>
+              <span>Rs {total.toFixed(2)}</span>
             </div>
           </div>
 
@@ -552,7 +552,7 @@ export function POSPage() {
             {change !== null && (
               <div className="flex justify-between font-bold text-green-600 dark:text-green-500 mt-2">
                 <span>Change</span>
-                <span>PKR {change.toFixed(2)}</span>
+                <span>Rs {change.toFixed(2)}</span>
               </div>
             )}
           </div>

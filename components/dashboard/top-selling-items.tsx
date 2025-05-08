@@ -66,7 +66,7 @@ export function TopSellingItems() {
               </div>
             </TableCell>
             <TableCell className="text-right">{item.sold}</TableCell>
-            <TableCell className="text-right font-medium">PKR {item.revenue.toFixed(2)}</TableCell>
+            <TableCell className="text-right font-medium">Rs {item.revenue.toFixed(2)}</TableCell>
           </TableRow>
         ))}
       </TableBody>

@@ -143,7 +143,7 @@ export function InventoryOverview() {
             <Box className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">PKR {stats.totalValue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">Rs {stats.totalValue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground mt-1">Current inventory value</p>
           </CardContent>
         </Card>
@@ -216,7 +216,7 @@ export function InventoryOverview() {
                             {item.category}
                           </Badge>
                         </TableCell>
-                        <TableCell>PKR {item.price.toFixed(2)}</TableCell>
+                        <TableCell>Rs {item.price.toFixed(2)}</TableCell>
                         <TableCell>
                           <span className={
                             item.status === "Out of Stock" 
@@ -265,7 +265,7 @@ export function InventoryOverview() {
                   Showing {inventoryItems.length} items
                 </p>
                 <p className="text-sm font-medium">
-                  Displayed Value: PKR {displayedInventoryValue.toFixed(2)}
+                  Displayed Value: Rs {displayedInventoryValue.toFixed(2)}
                 </p>
               </div>
             </>

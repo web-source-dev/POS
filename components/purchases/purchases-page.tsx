@@ -332,7 +332,7 @@ function PurchasesPageContent() {
                         <TableCell>{purchase.customerName || "Anonymous"}</TableCell>
                         <TableCell>{formatDate(purchase.date)}</TableCell>
                         <TableCell className="text-right">{purchase.items.length}</TableCell>
-                        <TableCell className="text-right font-medium">PKR {purchase.total.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">Rs {purchase.total.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           <Button 
                             variant="ghost" 
@@ -388,7 +388,7 @@ function PurchasesPageContent() {
                           <TableCell>{purchase.customerName || "Anonymous"}</TableCell>
                           <TableCell>{formatDate(purchase.date)}</TableCell>
                           <TableCell className="text-right">{purchase.items.length}</TableCell>
-                          <TableCell className="text-right font-medium">PKR {purchase.total.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-medium">Rs {purchase.total.toFixed(2)}</TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="outline"
@@ -445,7 +445,7 @@ function PurchasesPageContent() {
                           <TableCell>{purchase.customerName || "Anonymous"}</TableCell>
                           <TableCell>{formatDate(purchase.date)}</TableCell>
                           <TableCell className="text-right">{purchase.items.length}</TableCell>
-                          <TableCell className="text-right font-medium">PKR {purchase.total.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-medium">Rs {purchase.total.toFixed(2)}</TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="outline"
@@ -509,8 +509,8 @@ function PurchasesPageContent() {
                           <TableCell>{item.name}</TableCell>
                           <TableCell>{item.sku}</TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right">PKR {item.price.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">PKR {(item.price * item.quantity).toFixed(2)}</TableCell>
+                          <TableCell className="text-right">Rs {item.price.toFixed(2)}</TableCell>
+                          <TableCell className="text-right">Rs {(item.price * item.quantity).toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -527,15 +527,15 @@ function PurchasesPageContent() {
                   <div className="text-right space-y-1">
                     <div className="flex justify-between">
                       <span className="font-medium mr-8">Subtotal:</span>
-                      <span>PKR {selectedPurchase.subtotal.toFixed(2)}</span>
+                      <span>Rs {selectedPurchase.subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium mr-8">Discount:</span>
-                      <span>PKR {selectedPurchase.discount.toFixed(2)}</span>
+                      <span>Rs {selectedPurchase.discount.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold">
                       <span className="mr-8">Total:</span>
-                      <span>PKR {selectedPurchase.total.toFixed(2)}</span>
+                      <span>Rs {selectedPurchase.total.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

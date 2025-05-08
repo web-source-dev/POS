@@ -318,7 +318,7 @@ export function InventoryPage() {
                         <TableCell>{item.sku}</TableCell>
                         <TableCell>{item.category}</TableCell>
                         <TableCell className="text-right">{item.stock}</TableCell>
-                        <TableCell className="text-right">PKR {item.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">Rs {item.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           <Badge
                             variant="outline"
@@ -399,7 +399,7 @@ export function InventoryPage() {
                         <TableCell>{item.category}</TableCell>
                         <TableCell className="text-right">{item.stock}</TableCell>
                         <TableCell className="text-right">{item.reorderLevel}</TableCell>
-                        <TableCell className="text-right">PKR {item.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">Rs {item.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="icon" onClick={() => handleEditStock(item)} title="Update Stock">
@@ -460,7 +460,7 @@ export function InventoryPage() {
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.sku}</TableCell>
                         <TableCell>{item.category}</TableCell>
-                        <TableCell className="text-right">PKR {item.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">Rs {item.price.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="icon" onClick={() => handleEditStock(item)} title="Update Stock">
