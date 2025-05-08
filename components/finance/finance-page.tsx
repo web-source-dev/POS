@@ -365,7 +365,70 @@ function TransactionDetailsDialog({
 
   const handleCloseDialog = () => {
     // Clean up before closing
+    window.location.reload();
     onOpenChange(false);
+  };
+
+  // Helper function to format item array for display
+  const formatItems = (items: Array<{name: string; sku: string; quantity: number; price: number; _id?: string}>) => {
+    return (
+      <div className="space-y-2 mt-2">
+        {items.map((item, index) => (
+          <div key={index} className="pl-2 border-l-2 border-gray-200 text-sm">
+            <div className="font-medium">{item.name} ({item.sku})</div>
+            <div className="text-xs text-muted-foreground">
+              Qty: {item.quantity} x Rs {item.price?.toFixed(2) || '0.00'} = Rs {(item.quantity * item.price)?.toFixed(2) || '0.00'}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Function to determine if a field should be displayed and how
+  const shouldDisplayField = (key: string): boolean => {
+    // Skip MongoDB IDs and internal fields
+    if (key === '_id' || key === '__v' || key.startsWith('_')) {
+      return false;
+    }
+    
+    // Skip fields that are already displayed in the main dialog
+    if (['id', 'date', 'type', 'reference', 'amount', 'paymentMethod', 'status'].includes(key)) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Function to render a value appropriately based on its type
+  const renderValue = (key: string, value: unknown): React.ReactNode => {
+    if (value === null || value === undefined) {
+      return "N/A";
+    }
+    
+    // For item arrays, use special formatting
+    if (key === "items" && Array.isArray(value)) {
+      return formatItems(value as Array<{name: string; sku: string; quantity: number; price: number; _id?: string}>);
+    }
+    
+    // For dates, format them nicely
+    if (key.toLowerCase().includes('date') && (typeof value === 'string' || value instanceof Date)) {
+      try {
+        return formatDate(value.toString());
+      } catch (error) {
+        console.log("Error formatting date:", error)
+        // If date formatting fails, fall back to string representation
+        return String(value);
+      }
+    }
+    
+    // For simple values, just show the string representation
+    if (typeof value !== 'object') {
+      return String(value);
+    }
+    
+    // For objects that aren't arrays, show a simplified representation
+    return JSON.stringify(value, null, 2);
   };
 
   return (
@@ -443,13 +506,13 @@ function TransactionDetailsDialog({
           {transaction.originalData && (
             <div className="mt-4 pt-4 border-t">
               <p className="font-medium mb-2">Additional Information</p>
-              <div className="text-sm">
+              <div className="text-sm space-y-3">
                 {Object.entries(transaction.originalData)
-                  .filter(([key]) => !['id', 'date', 'type', 'reference', 'amount', 'paymentMethod', 'status'].includes(key))
+                  .filter(([key]) => shouldDisplayField(key))
                   .map(([key, value]) => (
-                    <div key={key} className="flex justify-between py-1">
-                      <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                      <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                    <div key={key} className="py-1">
+                      <div className="text-muted-foreground capitalize mb-1">{key.replace(/([A-Z])/g, ' $1')}</div>
+                      <div className="pl-2">{renderValue(key, value)}</div>
                     </div>
                   ))}
               </div>
@@ -505,6 +568,60 @@ function ExpenseDetailsDialog({
   const handleCloseDialog = () => {
     // Clean up before closing
     onOpenChange(false);
+  };
+
+  // Function to determine if a field should be displayed and how
+  const shouldDisplayExpenseField = (key: string): boolean => {
+    // Skip MongoDB IDs and internal fields
+    if (key === '_id' || key === '__v' || key.startsWith('_')) {
+      return false;
+    }
+    
+    // Skip fields that are already displayed in the main dialog
+    if (['id', 'expenseId', 'displayId', 'date', 'category', 'description', 'amount', 'paymentMethod', 'status'].includes(key)) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Function to render a value appropriately based on its type
+  const renderExpenseValue = (key: string, value: unknown): React.ReactNode => {
+    if (value === null || value === undefined) {
+      return "N/A";
+    }
+    
+    // For dates, format them nicely
+    if (key.toLowerCase().includes('date') && (typeof value === 'string' || value instanceof Date)) {
+      try {
+        return formatDate(value.toString());
+      } catch (error) {
+        console.log("Error formatting date:", error)
+        // If date formatting fails, fall back to string representation
+        return String(value);
+      }
+    }
+    
+    // For simple values, just show the string representation
+    if (typeof value !== 'object') {
+      return String(value);
+    }
+    
+    // For objects that aren't arrays, show a simplified representation
+    if (Array.isArray(value)) {
+      return (
+        <div className="space-y-1 mt-1">
+          {value.map((item, idx) => (
+            <div key={idx} className="pl-2 border-l-2 border-gray-200 text-xs">
+              {typeof item === 'object' ? JSON.stringify(item) : String(item)}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    // For other objects, show a formatted version
+    return JSON.stringify(value, null, 2);
   };
 
   return (
@@ -578,13 +695,13 @@ function ExpenseDetailsDialog({
           {expense.originalData && (
             <div className="mt-4 pt-4 border-t">
               <p className="font-medium mb-2">Additional Information</p>
-              <div className="text-sm">
+              <div className="text-sm space-y-3">
                 {Object.entries(expense.originalData)
-                  .filter(([key]) => !['id', 'expenseId', 'displayId', 'date', 'category', 'description', 'amount', 'paymentMethod', 'status'].includes(key))
+                  .filter(([key]) => shouldDisplayExpenseField(key))
                   .map(([key, value]) => (
-                    <div key={key} className="flex justify-between py-1">
-                      <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                      <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                    <div key={key} className="py-1">
+                      <div className="text-muted-foreground capitalize mb-1">{key.replace(/([A-Z])/g, ' $1')}</div>
+                      <div className="pl-2">{renderExpenseValue(key, value)}</div>
                     </div>
                   ))}
               </div>

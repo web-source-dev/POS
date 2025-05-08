@@ -27,7 +27,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { useAuth } from "@/lib/auth"
 import { UserAuthMenu } from "@/components/auth/user-auth-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-
+import Image from "next/image"
 interface MainLayoutProps {
   children: React.ReactNode
 }
@@ -150,8 +150,7 @@ export function MainLayout({ children }: MainLayoutProps) {
         )}>
           {!collapsed && (
             <div>
-              <h2 className="text-xl font-bold mb-1">POS System</h2>
-              <p className="text-sm text-muted-foreground">Inventory & POS System</p>
+              <Image src="/logo.png" alt="Logo" width={100} height={100} className="rounded-full mix-blend-multiply" />
             </div>
           )}
           <Button 
