@@ -11,7 +11,11 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "AutoParts POS & Inventory",
   description: "Inventory Management and POS System for Auto Spare Parts",
-    generator: 'v0.dev'
+  generator: 'v0.dev',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  }
 }
 
 export default function RootLayout({
