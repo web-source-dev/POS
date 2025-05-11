@@ -27,6 +27,12 @@ interface InventoryItem {
   status: string
   description: string
   reorderLevel: number
+  barcode?: string
+  subcategory?: string
+  brand?: string
+  supplier?: string
+  location?: string
+  purchasePrice?: number
 }
 
 
@@ -40,10 +46,14 @@ export function InventoryPage() {
     totalItems: 0,
     lowStockItems: 0,
     outOfStockItems: 0,
-    totalValue: 0
+    totalValue: 0,
+    totalPurchaseValue: 0,
+    potentialProfit: 0
   })
   const [categories, setCategories] = useState<string[]>([])
   const [categoryFilter, setCategoryFilter] = useState("")
+  const [brandFilter, setBrandFilter] = useState("")
+  const [supplierFilter, setSupplierFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [addItemDialogOpen, setAddItemDialogOpen] = useState(false)
   const [updateItemDialogOpen, setUpdateItemDialogOpen] = useState(false)
@@ -51,6 +61,8 @@ export function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null)
+  const [brands, setBrands] = useState<string[]>([])
+  const [suppliers, setSuppliers] = useState<string[]>([])
 
   // Load inventory data
   const loadInventoryData = useCallback(async () => {
@@ -59,7 +71,9 @@ export function InventoryPage() {
       const filters = {
         search: searchTerm,
         category: categoryFilter,
-        status: statusFilter
+        status: statusFilter,
+        brand: brandFilter,
+        supplier: supplierFilter
       }
       
       const items = await inventoryService.getItems(filters)
@@ -67,11 +81,19 @@ export function InventoryPage() {
       
       // Load stats
       const stats = await inventoryService.getStats()
-      setStatistics(stats as { totalItems: number; lowStockItems: number; outOfStockItems: number; totalValue: number })
+      setStatistics(stats as { totalItems: number; lowStockItems: number; outOfStockItems: number; totalValue: number; totalPurchaseValue: number; potentialProfit: number })
       
       // Load categories
       const categoriesList = await inventoryService.getCategories()
       setCategories(categoriesList as string[])
+      
+      // Load brands
+      const brandsList = await inventoryService.getBrands()
+      setBrands(brandsList as string[])
+      
+      // Load suppliers
+      const suppliersList = await inventoryService.getSuppliers()
+      setSuppliers(suppliersList as string[])
     } catch (error) {
       console.error("Failed to load inventory data:", error)
       toast({
@@ -82,7 +104,7 @@ export function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, categoryFilter, statusFilter, toast])
+  }, [searchTerm, categoryFilter, statusFilter, brandFilter, supplierFilter, toast])
 
   // Initial data load
   useEffect(() => {
@@ -126,17 +148,24 @@ export function InventoryPage() {
 
   const handleExport = () => {
     // Create CSV content
-    const headers = ["Name", "SKU", "Category", "Stock", "Price", "Status"]
+    const headers = ["Name", "SKU", "Barcode", "Category", "Subcategory", "Brand", "Supplier", "Stock", "Price", "Purchase Price", "Status", "Location", "Reorder Level"]
     const csvRows = [headers]
     
     inventoryItems.forEach(item => {
       csvRows.push([
         item.name,
         item.sku,
+        item.barcode || "",
         item.category,
+        item.subcategory || "",
+        item.brand || "",
+        item.supplier || "",
         item.stock.toString(),
         item.price.toFixed(2),
-        item.status
+        item.purchasePrice ? item.purchasePrice.toFixed(2) : "",
+        item.status,
+        item.location || "",
+        item.reorderLevel.toString()
       ])
     })
     
@@ -212,6 +241,7 @@ export function InventoryPage() {
             <TabsTrigger value="low-stock">Low Stock ({statistics.lowStockItems})</TabsTrigger>
             <TabsTrigger value="out-of-stock">Out of Stock ({statistics.outOfStockItems})</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
+            <TabsTrigger value="suppliers">Suppliers</TabsTrigger>
           </TabsList>
 
           <div className="flex gap-2">
@@ -226,12 +256,12 @@ export function InventoryPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search by name or SKU..."
+              placeholder="Search by name, SKU, barcode..."
               className="pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -243,7 +273,7 @@ export function InventoryPage() {
             <div className="flex gap-2 items-center">
               <span className="text-sm">Category:</span>
               <select
-                className="h-9 rounded-md border border-input px-3 py-1 text-sm"
+                className="h-9 rounded-md border border-input px-3 py-1 text-sm min-w-[150px]"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
               >
@@ -251,6 +281,44 @@ export function InventoryPage() {
                 {categories.map((category) => (
                   <option key={category} value={category}>
                     {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* Brand filter */}
+          {brands.length > 0 && (
+            <div className="flex gap-2 items-center">
+              <span className="text-sm">Brand:</span>
+              <select
+                className="h-9 rounded-md border border-input px-3 py-1 text-sm min-w-[150px]"
+                value={brandFilter}
+                onChange={(e) => setBrandFilter(e.target.value)}
+              >
+                <option value="">All Brands</option>
+                {brands.map((brand) => (
+                  <option key={brand} value={brand}>
+                    {brand}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* Supplier filter */}
+          {suppliers.length > 0 && (
+            <div className="flex gap-2 items-center">
+              <span className="text-sm">Supplier:</span>
+              <select
+                className="h-9 rounded-md border border-input px-3 py-1 text-sm min-w-[150px]"
+                value={supplierFilter}
+                onChange={(e) => setSupplierFilter(e.target.value)}
+              >
+                <option value="">All Suppliers</option>
+                {suppliers.map((supplier) => (
+                  <option key={supplier} value={supplier}>
+                    {supplier}
                   </option>
                 ))}
               </select>
@@ -288,16 +356,18 @@ export function InventoryPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[300px]">
+                      <TableHead className="w-[250px]">
                         <div className="flex items-center space-x-1">
                           <span>Item Name</span>
                           <ArrowUpDown className="h-3 w-3" />
                         </div>
                       </TableHead>
-                      <TableHead>SKU</TableHead>
+                      <TableHead>SKU/Barcode</TableHead>
                       <TableHead>Category</TableHead>
+                      <TableHead>Brand</TableHead>
                       <TableHead className="text-right">Stock</TableHead>
                       <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Profit</TableHead>
                       <TableHead className="text-right">Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -309,16 +379,62 @@ export function InventoryPage() {
                           <div className="flex flex-col">
                             <span>{item.name}</span>
                             {item.description && (
-                              <span className="text-xs text-muted-foreground truncate max-w-[300px]">
+                              <span className="text-xs text-muted-foreground truncate max-w-[250px]">
                                 {item.description}
                               </span>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{item.sku}</TableCell>
-                        <TableCell>{item.category}</TableCell>
-                        <TableCell className="text-right">{item.stock}</TableCell>
-                        <TableCell className="text-right">Rs {item.price.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span>{item.sku}</span>
+                            {item.barcode && (
+                              <span className="text-xs text-muted-foreground">
+                                {item.barcode}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span>{item.category}</span>
+                            {item.subcategory && (
+                              <span className="text-xs text-muted-foreground">
+                                {item.subcategory}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.brand || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-col items-end">
+                            <span>{item.stock}</span>
+                            {item.location && (
+                              <span className="text-xs text-muted-foreground">
+                                {item.location}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex flex-col items-end">
+                            <span>Rs {item.price.toFixed(2)}</span>
+                            {item.purchasePrice && (
+                              <span className="text-xs text-muted-foreground">
+                                Cost: Rs {item.purchasePrice.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.purchasePrice ? (
+                            <span className={`text-sm ${(item.price - item.purchasePrice) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {((item.price - item.purchasePrice) / item.price * 100).toFixed(1)}%
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           <Badge
                             variant="outline"
@@ -528,6 +644,60 @@ export function InventoryPage() {
                     <h3 className="text-lg font-medium mb-2">No Categories</h3>
                     <p className="text-sm text-muted-foreground max-w-md">
                       Add inventory items with categories to see them listed here.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="suppliers">
+          <Card>
+            <CardHeader>
+              <CardTitle>Suppliers</CardTitle>
+              <CardDescription>Manage your inventory suppliers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="h-72 flex items-center justify-center">
+                  <p>Loading supplier data...</p>
+                </div>
+              ) : suppliers.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {suppliers.map((supplier) => {
+                    const supplierItems = inventoryItems.filter((item) => item.supplier === supplier);
+                    const totalItems = supplierItems.length;
+                    const totalValue = supplierItems.reduce((sum, item) => sum + (item.price * item.stock), 0);
+                    
+                    return (
+                      <Card key={supplier}>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">{supplier}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex justify-between">
+                            <div>
+                              <p className="text-2xl font-bold">{totalItems}</p>
+                              <p className="text-sm text-muted-foreground">items</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xl font-bold">Rs {totalValue.toFixed(2)}</p>
+                              <p className="text-sm text-muted-foreground">total value</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="h-[450px] flex items-center justify-center border rounded-md">
+                  <div className="flex flex-col items-center text-center p-8">
+                    <Box className="h-10 w-10 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Suppliers</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Add inventory items with supplier information to see them listed here.
                     </p>
                   </div>
                 </div>

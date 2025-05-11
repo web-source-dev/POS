@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { ArrowUpDown, Calendar, Download, Eye, Filter, Search, X } from "lucide-react"
+import { ArrowUpDown, Calendar as CalendarIcon, Download, Eye, Filter, Search, X } from "lucide-react"
 import { format, subDays, isAfter, isBefore } from "date-fns"
+import { DateRange } from "react-day-picker"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,7 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -53,7 +54,7 @@ function PurchasesPageContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedPurchase, setSelectedPurchase] = useState<PurchaseOrder | null>(null)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: undefined,
     to: undefined,
   })
@@ -67,10 +68,10 @@ function PurchasesPageContent() {
         setLoading(true)
         const filters: Record<string, string> = {}
         
-        if (dateRange.from) {
+        if (dateRange?.from) {
           filters.startDate = dateRange.from.toISOString()
         }
-        if (dateRange.to) {
+        if (dateRange?.to) {
           filters.endDate = dateRange.to.toISOString()
         }
         
@@ -246,8 +247,8 @@ function PurchasesPageContent() {
             <Popover open={showDateFilter} onOpenChange={setShowDateFilter}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className={`gap-1 ${dateRange.from ? 'bg-primary/20' : ''}`}>
-                  <Calendar className="h-4 w-4" />
-                  {dateRange.from ? 'Date Filter Active' : 'Date Range'}
+                  <CalendarIcon className="h-4 w-4" />
+                  {dateRange.from ? format(dateRange.from, 'LLL dd, y') : 'Start'} - {dateRange.to ? format(dateRange.to, 'LLL dd, y') : 'End'}
                   {dateRange.from && (
                     <X
                       className="h-4 w-4 ml-1 hover:text-destructive"
@@ -260,11 +261,15 @@ function PurchasesPageContent() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
-                <CalendarComponent
+                <Calendar
                   initialFocus
                   mode="range"
                   selected={dateRange}
-                  onSelect={setDateRange as SelectRangeEventHandler}
+                  onSelect={(range) => {
+                    if (range) {
+                      setDateRange(range)
+                    }
+                  }}
                   numberOfMonths={2}
                 />
               </PopoverContent>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import {
   ArrowUpDown,
   Banknote,
-  Calendar,
+  Calendar as CalendarIcon,
   CreditCard,
   Download,
   MoreHorizontal,
@@ -32,7 +32,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
 import { Textarea } from "@/components/ui/textarea"
-import { DatePickerWithRange } from "@/components/ui/date-range-picker"
 import { format } from "date-fns"
 import {
   Dialog,
@@ -43,7 +42,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-
 import financeService from "@/services/financeService"
 import { useAuth } from "@/lib/auth"
 
@@ -462,7 +460,7 @@ function TransactionDetailsDialog({
         
         <div className="grid gap-5 py-4">
           <div className="grid grid-cols-[25px_1fr] items-start gap-2">
-            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <CalendarIcon className="h-5 w-5 text-muted-foreground" />
             <div>
               <p className="font-medium">Date & Time</p>
               <p className="text-sm text-muted-foreground">{formatDate(transaction.date)}</p>
@@ -651,7 +649,7 @@ function ExpenseDetailsDialog({
         
         <div className="grid gap-5 py-4">
           <div className="grid grid-cols-[25px_1fr] items-start gap-2">
-            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <CalendarIcon className="h-5 w-5 text-muted-foreground" />
             <div>
               <p className="font-medium">Date</p>
               <p className="text-sm text-muted-foreground">{formatDate(expense.date)}</p>
@@ -1023,7 +1021,7 @@ export function FinancePage() {
         <h2 className="text-3xl font-bold tracking-tight">Financial Management</h2>
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="sm" className="gap-1">
-            <Calendar className="h-4 w-4" />
+            <CalendarIcon className="h-4 w-4" />
             {dateRange?.from ? format(dateRange.from, 'LLL dd, y') : 'Start'} - {dateRange?.to ? format(dateRange.to, 'LLL dd, y') : 'End'}
           </Button>
           <Button variant="outline" size="sm">
@@ -1113,19 +1111,6 @@ export function FinancePage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <DatePickerWithRange 
-            date={dateRange}
-            setDate={(date) => {
-              if (date && date.from) {
-                setDateRange({
-                  from: date.from,
-                  to: date.to
-                });
-              } else {
-                setDateRange(undefined);
-              }
-            }}
-          />
           <Select 
             defaultValue="all"
             value={transactionType}
