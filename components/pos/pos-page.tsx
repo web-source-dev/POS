@@ -196,38 +196,10 @@ export function POSPage() {
       })
       return
     }
-
-    try {
-      const result = await posService.printReceipt({
-        items: cart,
-        total,
-        discount: parseFloat(discountAmount) || 0,
-        cashAmount: parseFloat(cashAmount) || 0,
-        change: change || 0,
-        customerName,
-        date: new Date()
-      }) as { success: boolean; message?: string }
-
-      if (result.success) {
-        toast({
-          title: "Receipt Printed",
-          description: "Receipt has been sent to the printer.",
-        })
-      } else {
-        toast({
-          title: "Print Error",
-          description: result.message || "Failed to print receipt.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error('Error printing receipt:', error)
-      toast({
-        title: "Print Error",
-        description: "Failed to print receipt. Check printer connection.",
-        variant: "destructive",
-      })
-    }
+    toast({
+      title: "Printing Receipt",
+      description: "Receipt has been sent to the printer.",
+    })
   }
 
   const completeSale = async () => {

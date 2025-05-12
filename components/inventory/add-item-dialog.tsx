@@ -43,6 +43,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
     barcode: "",
     category: "",
     subcategory: "",
+    subcategory2: "",
     brand: "",
     price: "",
     description: "",
@@ -76,6 +77,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
   const [recentSuppliers, setRecentSuppliers] = useState<string[]>([])
   const [recentBrands, setRecentBrands] = useState<string[]>([])
   const [recentSubcategories, setRecentSubcategories] = useState<string[]>([])
+  const [recentSubcategories2, setRecentSubcategories2] = useState<string[]>([])
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [tempTag, setTempTag] = useState("")
 
@@ -109,16 +111,41 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
           console.error("Failed to load brands:", error);
         });
         
-      // Load subcategories
-      inventoryService.getSubcategories()
+      // Subcategories and subcategory2 are loaded in their respective useEffects
+    }
+  }, [open]);
+  
+  // Load subcategories when category changes
+  useEffect(() => {
+    if (formData.category) {
+      inventoryService.getSubcategories(formData.category)
         .then(subcategories => {
           setRecentSubcategories(subcategories as string[]);
         })
         .catch(error => {
           console.error("Failed to load subcategories:", error);
         });
+    } else {
+      setRecentSubcategories([]);
     }
-  }, [open]);
+  }, [formData.category]);
+  
+  // Load subcategory2 when subcategory changes
+  useEffect(() => {
+    if (formData.category && formData.subcategory) {
+      console.log('Loading subcategory2 values for:', formData.category, formData.subcategory);
+      inventoryService.getSubcategories2(formData.category, formData.subcategory)
+        .then(subcategories2 => {
+          console.log('Loaded subcategory2 values:', subcategories2);
+          setRecentSubcategories2(subcategories2 as string[]);
+        })
+        .catch(error => {
+          console.error("Failed to load subcategory2 values:", error);
+        });
+    } else {
+      setRecentSubcategories2([]);
+    }
+  }, [formData.category, formData.subcategory]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -211,6 +238,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
         barcode: formData.barcode,
         category: formData.category,
         subcategory: formData.subcategory,
+        subcategory2: formData.subcategory2,
         brand: formData.brand,
         supplier: formData.supplier,
         price: Number(formData.price),
@@ -246,6 +274,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
         barcode: "",
         category: "",
         subcategory: "",
+        subcategory2: "",
         brand: "",
         price: "",
         stock: "",
@@ -392,7 +421,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
               
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="subcategory" className="text-right">
-                  Subcategory
+                  Subcategory 1
                 </Label>
                 <div className="col-span-3">
                   <Input 
@@ -400,7 +429,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
                     name="subcategory" 
                     value={formData.subcategory} 
                     onChange={handleChange} 
-                    placeholder="Optional subcategory"
+                    placeholder="First level subcategory"
                   />
                   
                   {recentSubcategories.length > 0 && (
@@ -414,6 +443,46 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
                           onClick={() => handleSelect("subcategory", subcategory)}
                         >
                           {subcategory}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="subcategory2" className="text-right">
+                  Subcategory 2
+                </Label>
+                <div className="col-span-3">
+                  <Input 
+                    id="subcategory2" 
+                    name="subcategory2" 
+                    value={formData.subcategory2} 
+                    onChange={handleChange} 
+                    placeholder={formData.subcategory ? "Second level subcategory" : "Select a subcategory first"}
+                    disabled={!formData.subcategory}
+                  />
+                  
+                  {formData.subcategory && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {recentSubcategories2.length > 0 
+                        ? "Select from existing or enter a new one" 
+                        : "No existing subcategory level 2. Enter a new one."}
+                    </div>
+                  )}
+                  
+                  {recentSubcategories2.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {recentSubcategories2.map((subcategory2) => (
+                        <Button
+                          key={subcategory2}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSelect("subcategory2", subcategory2)}
+                        >
+                          {subcategory2}
                         </Button>
                       ))}
                     </div>

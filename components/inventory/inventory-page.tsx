@@ -29,6 +29,7 @@ interface InventoryItem {
   reorderLevel: number
   barcode?: string
   subcategory?: string
+  subcategory2?: string
   brand?: string
   supplier?: string
   location?: string
@@ -52,6 +53,8 @@ export function InventoryPage() {
   })
   const [categories, setCategories] = useState<string[]>([])
   const [categoryFilter, setCategoryFilter] = useState("")
+  const [subcategoryFilter, setSubcategoryFilter] = useState("")
+  const [subcategory2Filter, setSubcategory2Filter] = useState("")
   const [brandFilter, setBrandFilter] = useState("")
   const [supplierFilter, setSupplierFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
@@ -63,6 +66,8 @@ export function InventoryPage() {
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null)
   const [brands, setBrands] = useState<string[]>([])
   const [suppliers, setSuppliers] = useState<string[]>([])
+  const [subcategories, setSubcategories] = useState<string[]>([])
+  const [subcategories2, setSubcategories2] = useState<string[]>([])
 
   // Load inventory data
   const loadInventoryData = useCallback(async () => {
@@ -71,6 +76,8 @@ export function InventoryPage() {
       const filters = {
         search: searchTerm,
         category: categoryFilter,
+        subcategory: subcategoryFilter, 
+        subcategory2: subcategory2Filter,
         status: statusFilter,
         brand: brandFilter,
         supplier: supplierFilter
@@ -104,7 +111,49 @@ export function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, categoryFilter, statusFilter, brandFilter, supplierFilter, toast])
+  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, supplierFilter, toast])
+
+  // Load subcategories when category changes
+  useEffect(() => {
+    if (categoryFilter) {
+      inventoryService.getSubcategories(categoryFilter)
+        .then(data => {
+          const subcategoriesData = data as string[];
+          setSubcategories(subcategoriesData);
+          // Clear subcategory filter when category changes
+          if (subcategoryFilter && !subcategoriesData.includes(subcategoryFilter)) {
+            setSubcategoryFilter('');
+          }
+        })
+        .catch(error => {
+          console.error("Failed to load subcategories:", error);
+        });
+    } else {
+      setSubcategories([]);
+      setSubcategoryFilter('');
+    }
+  }, [categoryFilter, subcategoryFilter]);
+
+  // Load subcategory2 options when subcategory changes
+  useEffect(() => {
+    if (categoryFilter && subcategoryFilter) {
+      inventoryService.getSubcategories2(categoryFilter, subcategoryFilter)
+        .then(data => {
+          const subcategories2Data = data as string[];
+          setSubcategories2(subcategories2Data);
+          // Clear subcategory2 filter when subcategory changes
+          if (subcategory2Filter && !subcategories2Data.includes(subcategory2Filter)) {
+            setSubcategory2Filter('');
+          }
+        })
+        .catch(error => {
+          console.error("Failed to load subcategory2 values:", error);
+        });
+    } else {
+      setSubcategories2([]);
+      setSubcategory2Filter('');
+    }
+  }, [categoryFilter, subcategoryFilter, subcategory2Filter]);
 
   // Initial data load
   useEffect(() => {
@@ -122,7 +171,7 @@ export function InventoryPage() {
       
       return () => clearTimeout(timer)
     }
-  }, [searchTerm, categoryFilter, statusFilter, user, loadInventoryData])
+  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, user, loadInventoryData])
 
   const handleAddItem = () => {
     loadInventoryData()
@@ -157,7 +206,8 @@ export function InventoryPage() {
         item.sku,
         item.barcode || "",
         item.category,
-        item.subcategory || "",
+        item.subcategory ? item.subcategory : "",
+        item.subcategory2 ? item.subcategory2 : "",
         item.brand || "",
         item.supplier || "",
         item.stock.toString(),
@@ -287,6 +337,46 @@ export function InventoryPage() {
             </div>
           )}
           
+          {/* Subcategory filter */}
+          {subcategories.length > 0 && (
+            <div className="flex gap-2 items-center">
+              <span className="text-sm">Subcategory 1:</span>
+              <select
+                className="h-9 rounded-md border border-input px-3 py-1 text-sm min-w-[150px]"
+                value={subcategoryFilter}
+                onChange={(e) => setSubcategoryFilter(e.target.value)}
+                disabled={!categoryFilter}
+              >
+                <option value="">All Subcategories</option>
+                {subcategories.map((subcat) => (
+                  <option key={subcat} value={subcat}>
+                    {subcat}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {/* Subcategory2 filter */}
+          {subcategories2.length > 0 && (
+            <div className="flex gap-2 items-center">
+              <span className="text-sm">Subcategory 2:</span>
+              <select
+                className="h-9 rounded-md border border-input px-3 py-1 text-sm min-w-[150px]"
+                value={subcategory2Filter}
+                onChange={(e) => setSubcategory2Filter(e.target.value)}
+                disabled={!subcategoryFilter}
+              >
+                <option value="">All Subcategories</option>
+                {subcategories2.map((subcat2) => (
+                  <option key={subcat2} value={subcat2}>
+                    {subcat2}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          
           {/* Brand filter */}
           {brands.length > 0 && (
             <div className="flex gap-2 items-center">
@@ -398,9 +488,11 @@ export function InventoryPage() {
                         <TableCell>
                           <div className="flex flex-col">
                             <span>{item.category}</span>
-                            {item.subcategory && (
+                            {(item.subcategory || item.subcategory2) && (
                               <span className="text-xs text-muted-foreground">
-                                {item.subcategory}
+                                {item.subcategory ? item.subcategory : ''}
+                                {item.subcategory && item.subcategory2 ? ' > ' : ''}
+                                {item.subcategory2 ? item.subcategory2 : ''}
                               </span>
                             )}
                           </div>

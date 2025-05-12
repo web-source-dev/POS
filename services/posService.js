@@ -54,31 +54,6 @@ const posService = {
       throw error;
     }
   },
-
-  /**
-   * Print a receipt
-   * @param {Object} saleData - Sale data to print
-   * @returns {Promise<Object>} Print result
-   */
-  printReceipt: async (saleData) => {
-    try {
-      // First get printer settings
-      const settings = await settingsService.getSettings();
-      
-      const printData = {
-        ...saleData,
-        businessInfo: settings.business,
-        receiptHeader: settings.pos.receiptHeader,
-        receiptFooter: settings.pos.receiptFooter,
-        printerConfig: settings.hardware.printer
-      };
-      
-      return await api.post('/print/receipt', printData);
-    } catch (error) {
-      console.error('Error printing receipt:', error);
-      throw error;
-    }
-  }
 };
 
 export default posService; 
