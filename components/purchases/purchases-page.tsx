@@ -28,7 +28,6 @@ import { toast } from "@/components/ui/use-toast"
 
 import purchaseService from "@/services/purchaseService"
 import { withAuthProtection } from "@/lib/protected-route"
-import { SelectRangeEventHandler } from "react-day-picker"
 
 // Add interfaces for type safety
 interface PurchaseOrder {

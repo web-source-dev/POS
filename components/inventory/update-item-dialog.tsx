@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Check, Info, Package, Tag, DollarSign, Truck, ImageIcon, BarChart } from "lucide-react"
+import { Check, Info, Package, Tag, DollarSign, BarChart } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -25,7 +25,7 @@ import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
-
+import Image from "next/image"
 interface InventoryItem {
   _id: string
   name: string
@@ -224,7 +224,7 @@ export function UpdateItemDialog({ open, onOpenChange, onItemUpdated, item }: Up
       setFormData((prev) => ({
         ...prev,
         [parent]: {
-          ...(prev[parent as keyof typeof prev] as Record<string, any>),
+          ...(prev[parent as keyof typeof prev] as Record<string, unknown>),
           [child]: value
         }
       }))
@@ -882,7 +882,7 @@ export function UpdateItemDialog({ open, onOpenChange, onItemUpdated, item }: Up
                     />
                     {previewUrl && (
                       <div className="h-20 w-20 rounded border overflow-hidden">
-                        <img 
+                        <Image 
                           src={previewUrl} 
                           alt="Preview" 
                           className="h-full w-full object-cover" 

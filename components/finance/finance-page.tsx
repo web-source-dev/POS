@@ -742,6 +742,7 @@ export function FinancePage() {
     from: getFirstDayOfYear(),
     to: new Date(),
   })
+  console.log(setDateRange)
   const [transactionType, setTransactionType] = useState("all")
   
   // Modal states

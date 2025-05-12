@@ -25,7 +25,7 @@ import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
-
+import Image from "next/image"
 interface AddItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -155,7 +155,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
       setFormData((prev) => ({
         ...prev,
         [parent]: {
-          ...(prev[parent as keyof typeof prev] as Record<string, any>),
+          ...(prev[parent as keyof typeof prev] as Record<string, unknown>),
           [child]: value
         }
       }))
@@ -840,7 +840,7 @@ export function AddItemDialog({ open, onOpenChange, onItemAdded }: AddItemDialog
                     />
                     {previewUrl && (
                       <div className="h-20 w-20 rounded border overflow-hidden">
-                        <img 
+                        <Image 
                           src={previewUrl} 
                           alt="Preview" 
                           className="h-full w-full object-cover" 
