@@ -17,6 +17,7 @@ import {
   Truck,
   ChevronLeft,
   ChevronRight,
+  Calendar,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -67,6 +68,12 @@ export function MainLayout({ children }: MainLayoutProps) {
       label: "Purchases",
       icon: ClipboardList,
       active: pathname === "/purchases",
+    },
+    {
+      href: "/today",
+      label: "Today's Sales",
+      icon: Calendar,
+      active: pathname === "/today",
     },
     {
       href: "/reports",
