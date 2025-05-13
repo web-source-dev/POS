@@ -12,6 +12,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Line,
+  LineChart,
+  LabelList,
+  ComposedChart
 } from "recharts"
 
 export {
@@ -28,4 +32,8 @@ export {
   Tooltip,
   XAxis,
   YAxis,
+  Line,
+  LineChart,
+  LabelList,
+  ComposedChart
 }

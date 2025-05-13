@@ -29,6 +29,18 @@ const supplierService = {
   },
 
   /**
+   * Get inventory items from a specific supplier
+   */
+  getSupplierInventory: async (supplierId) => {
+    try {
+      return await api.get('/inventory', { params: { supplier: supplierId } });
+    } catch (error) {
+      console.error(`Error fetching inventory for supplier ID ${supplierId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
    * Create a new supplier
    */
   createSupplier: async (supplierData) => {

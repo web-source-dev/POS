@@ -12,7 +12,6 @@ import {
   Trash,
   User,
 } from "lucide-react"
-
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +23,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import posService from "@/services/posService.js"
 import settingsService from "@/services/settingsService.js"
+import { ReceiptPrinter, ReceiptData } from "./receipt-printer"
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 // Types
 type InventoryItem = {
@@ -50,7 +58,7 @@ type PrinterSettings = {
   enabled: boolean
 }
 
-type Settings = {
+type BusinessSettings = {
   business: {
     name: string
     address: string
@@ -62,9 +70,32 @@ type Settings = {
   pos: {
     receiptHeader: string
     receiptFooter: string
+    logo: string
   }
   hardware: {
     printer: PrinterSettings
+  }
+}
+
+type CompletedSale = {
+  message: string
+  saleDetails: {
+    id: string
+    receiptNumber: number
+    items: CartItem[]
+    total: number
+    discount: number
+    cashAmount: number
+    change: number
+    customerName: string
+    date: string
+    userId: string
+  }
+  inventoryUpdates: unknown[]
+  cashDrawer: {
+    previousBalance: number
+    currentBalance: number
+    saleAmount: number
   }
 }
 
@@ -76,11 +107,17 @@ export function POSPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [customerName, setCustomerName] = useState("")
   const [discountAmount, setDiscountAmount] = useState("")
-  const [printerSettings, setPrinterSettings] = useState<PrinterSettings | null>(null)
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null)
   
   const [cart, setCart] = useState<CartItem[]>([])
   const [cashAmount, setCashAmount] = useState("")
   const [change, setChange] = useState<number | null>(null)
+
+  // Receipt printing states
+  const [showPrintDialog, setShowPrintDialog] = useState(false)
+  const [printingInProgress, setPrintingInProgress] = useState(false)
+  const [currentSale, setCurrentSale] = useState<CompletedSale | null>(null)
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
 
   // Load inventory and settings on component mount
   useEffect(() => {
@@ -101,9 +138,9 @@ export function POSPage() {
         }))
         setCategories(uniqueCategories)
         
-        // Load printer settings
-        const settings = await settingsService.getSettings() as Settings
-        setPrinterSettings(settings.hardware.printer)
+        // Load business settings
+        const settings = await settingsService.getSettings() as BusinessSettings
+        setBusinessSettings(settings)
         
         setIsLoading(false)
       } catch (error: unknown) {
@@ -187,8 +224,83 @@ export function POSPage() {
     })
   }
 
+  // Prepare receipt data from sale
+  const prepareReceiptData = (sale: CompletedSale): ReceiptData => {
+    console.log("Preparing receipt data:", sale); // Debug log
+    
+    // Validate sale items
+    if (!sale.saleDetails.items || !Array.isArray(sale.saleDetails.items)) {
+      console.error("Sale items are not an array or are missing:", sale.saleDetails.items);
+      return {
+        id: sale.saleDetails.id,
+        receiptNumber: sale.saleDetails.receiptNumber,
+        items: [],
+        subtotal: sale.saleDetails.total + (sale.saleDetails.discount || 0),
+        discount: sale.saleDetails.discount || 0,
+        total: sale.saleDetails.total,
+        cashAmount: sale.saleDetails.cashAmount,
+        change: sale.saleDetails.change,
+        customerName: sale.saleDetails.customerName,
+        date: sale.saleDetails.date
+      };
+    }
+    
+    // Make sure each item has the required properties
+    const validItems = sale.saleDetails.items.map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        console.error(`Invalid item at index ${index}:`, item);
+        // Return a placeholder item
+        return {
+          id: `error-${index}`,
+          name: 'Error: Invalid Item',
+          quantity: 1,
+          price: 0,
+          sku: ''
+        };
+      }
+      
+      return {
+        id: item.id || `item-${index}`,
+        name: item.name || 'Unknown Item',
+        quantity: item.quantity || 1,
+        price: item.price || 0,
+        sku: item.sku || ''
+      };
+    });
+    
+    // Log the items we're using for the receipt
+    console.log("Validated receipt items:", validItems);
+    
+    return {
+      id: sale.saleDetails.id,
+      receiptNumber: sale.saleDetails.receiptNumber,
+      items: validItems,
+      subtotal: sale.saleDetails.total + (sale.saleDetails.discount || 0),
+      discount: sale.saleDetails.discount || 0,
+      total: sale.saleDetails.total,
+      cashAmount: sale.saleDetails.cashAmount,
+      change: sale.saleDetails.change,
+      customerName: sale.saleDetails.customerName,
+      date: sale.saleDetails.date
+    }
+  }
+
+  // Handle print completion
+  const handlePrintComplete = async () => {
+    setPrintingInProgress(false)
+    
+    // Mark the sale as printed in the database
+    if (currentSale) {
+      try {
+        await posService.markAsPrinted(currentSale.saleDetails.id)
+      } catch (error) {
+        console.error('Error marking sale as printed:', error)
+      }
+    }
+  }
+
   const printReceipt = async () => {
-    if (cart.length === 0) {
+    if (cart.length === 0 && !currentSale) {
       toast({
         title: "Empty Cart",
         description: "Please add items to the cart before printing.",
@@ -196,13 +308,42 @@ export function POSPage() {
       })
       return
     }
-    toast({
-      title: "Printing Receipt",
-      description: "Receipt has been sent to the printer.",
-    })
+
+    // If no current sale but we have items in cart, we need to save the sale first
+    if (!currentSale && cart.length > 0) {
+      if (change === null) {
+        toast({
+          title: "Calculate Change",
+          description: "Please calculate change before printing the receipt.",
+          variant: "destructive",
+        })
+        return
+      }
+      
+      // Complete the sale first
+      await completeSale(true)
+      return
+    }
+
+    // If we have a current sale, print it
+    if (currentSale) {
+      setPrintingInProgress(true)
+      const receipt = prepareReceiptData(currentSale)
+      setReceiptData(receipt)
+
+      // Make sure we have the latest settings data with correct logo path
+      if (!businessSettings) {
+        try {
+          const settings = await posService.getReceiptSettings() as BusinessSettings
+          setBusinessSettings(settings)
+        } catch (error) {
+          console.error('Error fetching business settings:', error)
+        }
+      }
+    }
   }
 
-  const completeSale = async () => {
+  const completeSale = async (printAfterSale = false) => {
     if (cart.length === 0) {
       toast({
         title: "Empty Cart",
@@ -229,18 +370,28 @@ export function POSPage() {
         cashAmount: parseFloat(cashAmount) || 0,
         change: change || 0,
         customerName
-      })
-      console.log(result)
+      }) as CompletedSale
 
+      setCurrentSale(result)
+      
       toast({
         title: "Sale Completed",
-        description: `Sale of ${cart.length} items for Rs ${total.toFixed(2)} has been completed.`,
+        description: `Sale #${result.saleDetails.receiptNumber.toString().padStart(6, '0')} completed successfully.`,
       })
       
-
       // Refresh inventory data
       const inventoryData = await posService.getInventory()
       setInventoryItems(inventoryData)
+
+      // If printAfterSale is true, show print dialog
+      if (printAfterSale) {
+        setPrintingInProgress(true)
+        const receipt = prepareReceiptData(result)
+        setReceiptData(receipt)
+      } else {
+        // Show the print dialog
+        setShowPrintDialog(true)
+      }
 
       // Reset cart and form
       setCart([])
@@ -534,7 +685,7 @@ export function POSPage() {
               variant="outline" 
               className="w-full gap-1" 
               onClick={printReceipt} 
-              disabled={!printerSettings?.enabled}
+              disabled={printingInProgress || (cart.length === 0 && !currentSale)}
             >
               <Printer className="h-4 w-4" />
               Print
@@ -561,13 +712,59 @@ export function POSPage() {
           <Button 
             variant="default" 
             className="w-full gap-1 mt-2 bg-green-600 hover:bg-green-700" 
-            onClick={completeSale}
+            onClick={() => completeSale(false)}
+            disabled={printingInProgress}
           >
             Complete Sale
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      {/* Print Dialog */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Print Receipt</DialogTitle>
+            <DialogDescription>
+              Sale #{currentSale?.saleDetails.receiptNumber.toString().padStart(6, '0')} has been completed successfully.
+              Would you like to print a receipt?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row justify-end gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowPrintDialog(false)}
+            >
+              Skip
+            </Button>
+            <Button
+              onClick={() => {
+                setShowPrintDialog(false)
+                printReceipt()
+              }}
+            >
+              Print Receipt
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt Printer Component */}
+      {printingInProgress && receiptData && businessSettings && (
+        <ReceiptPrinter
+          receiptData={receiptData}
+          settings={{
+            business: businessSettings.business,
+            pos: {
+              receiptHeader: businessSettings.pos.receiptHeader,
+              receiptFooter: businessSettings.pos.receiptFooter,
+              logo: businessSettings.pos.logo
+            }
+          }}
+          onPrintComplete={handlePrintComplete}
+        />
+      )}
     </div>
   )
 }

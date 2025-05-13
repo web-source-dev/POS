@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle, CalendarIcon } from "lucide-react"
+import { CheckCircle, CalendarIcon, Plus, Minus, DatabaseIcon, TrendingUp, ArrowRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
+import { Separator } from "@/components/ui/separator"
 
 interface InventoryItem {
   _id: string
@@ -34,6 +35,8 @@ interface InventoryItem {
   description: string
   reorderLevel: number
   expiryDate?: string | Date
+  unitOfMeasure?: string
+  measureValue?: string
 }
 
 interface UpdateStockDialogProps {
@@ -114,85 +117,159 @@ export function UpdateStockDialog({ open, onOpenChange, onStockUpdated, item }: 
     }
   }
 
+  // Quick increment/decrement handlers
+  const incrementStock = () => {
+    const current = parseInt(stockChange) || 0;
+    setStockChange((current + 1).toString());
+  };
+
+  const decrementStock = () => {
+    const current = parseInt(stockChange) || 0;
+    setStockChange((current - 1).toString());
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Update Stock</DialogTitle>
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <DatabaseIcon className="h-5 w-5 text-primary" />
+            Update Stock
+          </DialogTitle>
           <DialogDescription>
             {item && (
-              <>
-                Quickly update stock level for <span className="font-medium">{item.name}</span>.
-              </>
+              <div className="mt-1">
+                <span className="font-medium text-foreground">{item.name}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm text-muted-foreground">Current stock:</span>
+                  <span className="font-semibold text-sm">{item.stock}</span>
+                  <span className="text-sm text-muted-foreground">SKU:</span>
+                  <span className="font-semibold text-sm">{item.sku}</span>
+                </div>
+              </div>
             )}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label>Operation</Label>
+              <Label className="text-sm font-medium">Operation Type</Label>
               <RadioGroup
                 value={operation}
                 onValueChange={setOperation}
-                className="flex flex-col space-y-1"
+                className="flex flex-col space-y-2 rounded-lg border p-3 bg-muted/30"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="add" id="add" />
-                  <Label htmlFor="add" className="cursor-pointer">
-                    Add/Subtract from current stock ({item?.stock || 0})
+                  <RadioGroupItem value="add" id="add" className="border-primary" />
+                  <Label htmlFor="add" className="cursor-pointer font-medium flex items-center gap-1.5">
+                    <Plus className="h-3.5 w-3.5 text-green-600" />
+                    <span>Add or subtract from current stock</span>
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="set" id="set" />
-                  <Label htmlFor="set" className="cursor-pointer">
-                    Set to specific value
+                  <RadioGroupItem value="set" id="set" className="border-primary" />
+                  <Label htmlFor="set" className="cursor-pointer font-medium flex items-center gap-1.5">
+                    <ArrowRight className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Set to specific value</span>
                   </Label>
                 </div>
               </RadioGroup>
             </div>
             
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="stockChange" className="text-right">
-                {operation === "add" ? "Change" : "New Value"}
+            <div className="grid grid-cols-1 items-center gap-2">
+              <Label htmlFor="stockChange" className="text-sm font-medium">
+                {operation === "add" ? "Quantity to Add/Subtract" : "New Stock Value"}
               </Label>
-              <Input
-                id="stockChange"
-                type="number"
-                value={stockChange}
-                onChange={(e) => setStockChange(e.target.value)}
-                className="col-span-3"
-                min={operation === "set" ? "0" : undefined}
-                placeholder={operation === "add" ? "Enter positive or negative value" : "Enter new stock value"}
-                required
-              />
+              <div className="flex items-center gap-2">
+                {operation === "add" && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-full"
+                    onClick={decrementStock}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                )}
+                <div className="relative flex-1">
+                  <Input
+                    id="stockChange"
+                    type="number"
+                    value={stockChange}
+                    onChange={(e) => setStockChange(e.target.value)}
+                    className={`text-center font-medium text-lg h-10 ${
+                      operation === "add" && parseInt(stockChange) < 0 ? "text-red-600" : 
+                      operation === "add" && parseInt(stockChange) > 0 ? "text-green-600" : ""
+                    }`}
+                    min={operation === "set" ? "0" : undefined}
+                    placeholder={operation === "add" ? "Enter value" : "Enter new stock value"}
+                    required
+                  />
+                  {operation === "add" && parseInt(stockChange) !== 0 && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm font-medium">
+                      {parseInt(stockChange) > 0 ? "+" : ""}
+                    </div>
+                  )}
+                </div>
+                {operation === "add" && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-full"
+                    onClick={incrementStock}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             
             {operation === "add" && (
-              <div className="grid grid-cols-4 items-center gap-4">
-                <div className="text-right text-sm text-muted-foreground">
-                  New Total:
+              <div className="rounded-lg border p-3 bg-muted/30">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    New Total:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <span className={`font-medium ${
+                      item && (item.stock + parseInt(stockChange || "0")) < 0 ? "text-red-600" :
+                      item && (item.stock + parseInt(stockChange || "0")) <= item.reorderLevel ? "text-amber-600" :
+                      "text-green-600"
+                    }`}>
+                      {item ? Math.max(0, item.stock + parseInt(stockChange || "0")) : 0}
+                    </span>
+                  </div>
                 </div>
-                <div className="col-span-3 text-sm font-medium">
-                  {item ? item.stock + parseInt(stockChange || "0") : 0}
-                </div>
+                {item && (item.stock + parseInt(stockChange || "0")) <= item.reorderLevel && (item.stock + parseInt(stockChange || "0")) > 0 && (
+                  <p className="text-xs text-amber-600 mt-1">This will put the item below reorder level ({item.reorderLevel})</p>
+                )}
+                {item && (item.stock + parseInt(stockChange || "0")) <= 0 && (
+                  <p className="text-xs text-red-600 mt-1">This will mark the item as out of stock</p>
+                )}
               </div>
             )}
             
-            <div className="mt-2 border-t pt-4">
-              <div className="flex items-center space-x-2 mb-4">
+            <Separator className="my-1" />
+            
+            <div className="pt-2">
+              <div className="flex items-center space-x-2 mb-3">
                 <Checkbox 
                   id="updateExpiry" 
                   checked={updateExpiryDate}
                   onCheckedChange={(checked) => setUpdateExpiryDate(checked === true)}
+                  className="border-primary data-[state=checked]:bg-primary/90"
                 />
-                <Label htmlFor="updateExpiry" className="cursor-pointer">
-                  Update expiry date (for perishable items)
+                <Label htmlFor="updateExpiry" className="cursor-pointer font-medium">
+                  Update expiry date
                 </Label>
               </div>
               
               {updateExpiryDate && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="expiryDate" className="text-right">
+                <div className="grid grid-cols-4 items-center gap-4 transition-all duration-200 ease-in-out">
+                  <Label htmlFor="expiryDate" className="text-right text-sm">
                     Expiry Date
                   </Label>
                   <div className="col-span-3">
@@ -201,13 +278,13 @@ export function UpdateStockDialog({ open, onOpenChange, onStockUpdated, item }: 
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full justify-start text-left font-normal",
+                            "w-full justify-start text-left font-normal shadow-sm",
                             !expiryDate && "text-muted-foreground"
                           )}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {expiryDate ? format(expiryDate, "PPP") : "Set expiry date"}
+                          {expiryDate ? format(expiryDate, "PPP") : "Select expiry date"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent 
@@ -230,11 +307,23 @@ export function UpdateStockDialog({ open, onOpenChange, onStockUpdated, item }: 
               )}
             </div>
           </div>
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
+          <DialogFooter className="pt-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="gap-2"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="gap-2 bg-primary/90 hover:bg-primary transition-colors"
+            >
               {isSubmitting ? "Updating..." : (
                 <>
-                  <CheckCircle className="mr-2 h-4 w-4" />
+                  <CheckCircle className="h-4 w-4" />
                   Update Stock
                 </>
               )}

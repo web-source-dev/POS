@@ -78,15 +78,11 @@ export async function apiRequest<T = unknown>(
     throw error;
   }
 }
-
-// Define a proper type for query parameters
-type QueryParams = Record<string, string | number | boolean | undefined | null>;
-
 /**
  * API service with methods for common operations
  */
 export const api = {
-  get: <T = unknown>(endpoint: string, options?: Omit<RequestOptions, 'method' | 'body'> & { params?: QueryParams }) => {
+  get: <T = unknown>(endpoint: string, options?: Omit<RequestOptions, 'method' | 'body'> & { params?: Record<string, unknown> }) => {
     // Handle query parameters if provided
     if (options?.params) {
       const queryParams = new URLSearchParams();
@@ -102,7 +98,8 @@ export const api = {
       }
       
       // Remove params from options to avoid confusion
-      const { ...restOptions } = options;
+      const { params, ...restOptions } = options;
+      console.log(params)
       return apiRequest<T>(endpoint, { ...restOptions, method: 'GET' });
     }
     

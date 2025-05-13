@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 const purchaseService = {
   /**
    * Get all purchases (using sales data)
+   * @param {Object} filters - Optional filters for the query
    * @returns {Promise<Array>} List of purchase orders
    */
   getAllPurchases: async (filters = {}) => {
@@ -15,6 +16,13 @@ const purchaseService = {
       if (filters.startDate) queryParams.append('startDate', filters.startDate);
       if (filters.endDate) queryParams.append('endDate', filters.endDate);
       if (filters.search) queryParams.append('search', filters.search);
+      if (filters.limit) queryParams.append('limit', filters.limit);
+      if (filters.page) queryParams.append('page', filters.page);
+      if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
+      if (filters.sortOrder) queryParams.append('sortOrder', filters.sortOrder);
+      if (filters.minAmount) queryParams.append('minAmount', filters.minAmount);
+      if (filters.maxAmount) queryParams.append('maxAmount', filters.maxAmount);
+      if (filters.customer) queryParams.append('customer', filters.customer);
       
       const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
       return await api.get(`/sales${queryString}`);
@@ -34,6 +42,95 @@ const purchaseService = {
       return await api.get(`/sales/${id}`);
     } catch (error) {
       console.error(`Error fetching purchase with ID ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get recent purchases
+   * @param {number} limit - Number of purchases to return
+   * @returns {Promise<Array>} List of recent purchases
+   */
+  getRecentPurchases: async (limit = 10) => {
+    try {
+      return await api.get(`/sales/history?limit=${limit}`);
+    } catch (error) {
+      console.error('Error fetching recent purchases:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Export purchases to CSV format
+   * @param {Array} purchases - List of purchases to export
+   * @returns {string} CSV content
+   */
+  exportPurchasesToCsv: (purchases) => {
+    try {
+      // Define CSV headers
+      const headers = ['Order ID', 'Customer', 'Date', 'Items', 'Total', 'Status'];
+      
+      // Map purchase data to CSV rows
+      const rows = purchases.map(purchase => [
+        purchase._id,
+        purchase.customerName || 'Anonymous',
+        new Date(purchase.date).toLocaleString(),
+        purchase.items.length.toString(),
+        purchase.total.toFixed(2),
+        'Completed'
+      ]);
+      
+      // Combine headers and rows
+      return [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+    } catch (error) {
+      console.error('Error exporting purchases to CSV:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get purchase statistics 
+   * @returns {Promise<Object>} Purchase statistics
+   */
+  getPurchaseStats: async () => {
+    try {
+      // This would ideally be a backend endpoint, but we can calculate this
+      // on the frontend for now until a proper endpoint is created
+      const purchases = await purchaseService.getAllPurchases();
+      
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      
+      const recentPurchases = purchases.filter(p => 
+        new Date(p.date) >= oneWeekAgo
+      );
+      
+      const monthlyPurchases = purchases.filter(p => 
+        new Date(p.date) >= oneMonthAgo
+      );
+      
+      const totalRevenue = purchases.reduce((sum, p) => sum + p.total, 0);
+      const recentRevenue = recentPurchases.reduce((sum, p) => sum + p.total, 0);
+      const monthlyRevenue = monthlyPurchases.reduce((sum, p) => sum + p.total, 0);
+      
+      return {
+        totalOrders: purchases.length,
+        totalRevenue,
+        recentOrders: recentPurchases.length,
+        recentRevenue,
+        monthlyOrders: monthlyPurchases.length,
+        monthlyRevenue,
+        averageOrderValue: purchases.length ? totalRevenue / purchases.length : 0,
+        mostRecentOrder: purchases.length ? purchases[0] : null
+      };
+    } catch (error) {
+      console.error('Error calculating purchase statistics:', error);
       throw error;
     }
   },

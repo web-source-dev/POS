@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { ArrowUpDown, Download, Filter, MoreHorizontal, Plus, Search } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +21,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AddSupplierDialog } from "@/components/suppliers/add-supplier-dialog"
 import { EditSupplierDialog } from "@/components/suppliers/edit-supplier-dialog"
-import { SupplierDetailsDialog } from "@/components/suppliers/supplier-details-dialog"
 import { useToast } from "@/hooks/use-toast"
 import supplierService from "@/services/supplierService"
 
@@ -42,15 +42,15 @@ interface Supplier {
 
 export function SuppliersPage() {
   const { toast } = useToast()
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [statusFilter, setStatusFilter] = useState("all")
   const [addSupplierDialogOpen, setAddSupplierDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   
-  // Selected supplier state for view and edit
+  // Selected supplier state for edit
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
-  const [viewDetailsOpen, setViewDetailsOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
 
   const fetchSuppliers = useCallback(async () => {
@@ -84,18 +84,12 @@ export function SuppliersPage() {
     setSelectedSupplier(updatedSupplier)
   }
 
-  const handleViewDetails = (supplier: Supplier) => {
-    setSelectedSupplier(supplier)
-    setViewDetailsOpen(true)
+  const handleViewDetails = (supplierId: string) => {
+    router.push(`/suppliers/view/${supplierId}`)
   }
 
   const handleEditSupplier = (supplier: Supplier) => {
     setSelectedSupplier(supplier)
-    setEditDialogOpen(true)
-  }
-
-  const handleEditFromDetails = () => {
-    setViewDetailsOpen(false)
     setEditDialogOpen(true)
   }
 
@@ -271,7 +265,7 @@ export function SuppliersPage() {
                     filteredSuppliers.map((supplier) => (
                       <TableRow key={supplier._id}>
                         <TableCell className="font-medium">
-                          <div>
+                          <div className="cursor-pointer" onClick={() => handleViewDetails(supplier._id)}>
                             <p className="font-medium">{supplier.name}</p>
                             <p className="text-xs text-muted-foreground">{supplier.email}</p>
                           </div>
@@ -302,7 +296,7 @@ export function SuppliersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => handleViewDetails(supplier)}>
+                              <DropdownMenuItem onClick={() => handleViewDetails(supplier._id)}>
                                 View Details
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleEditSupplier(supplier)}>
@@ -364,7 +358,7 @@ export function SuppliersPage() {
                       .map((supplier) => (
                         <TableRow key={supplier._id}>
                           <TableCell className="font-medium">
-                            <div>
+                            <div className="cursor-pointer" onClick={() => handleViewDetails(supplier._id)}>
                               <p className="font-medium">{supplier.name}</p>
                               <p className="text-xs text-muted-foreground">{supplier.address}</p>
                             </div>
@@ -398,14 +392,6 @@ export function SuppliersPage() {
         open={addSupplierDialogOpen}
         onOpenChange={setAddSupplierDialogOpen}
         onSupplierAdded={handleAddSupplier}
-      />
-
-      {/* View Supplier Details Dialog */}
-      <SupplierDetailsDialog 
-        open={viewDetailsOpen}
-        onOpenChange={setViewDetailsOpen}
-        supplier={selectedSupplier}
-        onEdit={handleEditFromDetails}
       />
 
       {/* Edit Supplier Dialog */}

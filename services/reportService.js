@@ -1,118 +1,194 @@
 import { api } from "@/lib/api";
 
-/**
- * Reports Service for fetching and managing report data
- */
+// Base date ranges for reports
+export const DATE_RANGES = {
+  TODAY: 'today',
+  YESTERDAY: 'yesterday',
+  THIS_WEEK: 'this_week',
+  LAST_WEEK: 'last_week',
+  THIS_MONTH: 'this_month',
+  LAST_MONTH: 'last_month',
+  THIS_YEAR: 'this_year',
+  CUSTOM: 'custom'
+};
+
+// Helper to format dates for API requests
+const formatDate = (date) => {
+  return date.toISOString().split('T')[0];
+};
+
+// Get date range based on selected period
+export const getDateRange = (period, customRange = {}) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  switch (period) {
+    case DATE_RANGES.TODAY:
+      return { 
+        startDate: formatDate(today), 
+        endDate: formatDate(now) 
+      };
+    
+    case DATE_RANGES.YESTERDAY:
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return { 
+        startDate: formatDate(yesterday), 
+        endDate: formatDate(yesterday) 
+      };
+    
+    case DATE_RANGES.THIS_WEEK:
+      const thisWeekStart = new Date(today);
+      thisWeekStart.setDate(today.getDate() - today.getDay());
+      return { 
+        startDate: formatDate(thisWeekStart), 
+        endDate: formatDate(now) 
+      };
+    
+    case DATE_RANGES.LAST_WEEK:
+      const lastWeekStart = new Date(today);
+      lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
+      const lastWeekEnd = new Date(lastWeekStart);
+      lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+      return { 
+        startDate: formatDate(lastWeekStart), 
+        endDate: formatDate(lastWeekEnd) 
+      };
+    
+    case DATE_RANGES.THIS_MONTH:
+      const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      return { 
+        startDate: formatDate(thisMonthStart), 
+        endDate: formatDate(now) 
+      };
+    
+    case DATE_RANGES.LAST_MONTH:
+      const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+      return { 
+        startDate: formatDate(lastMonthStart), 
+        endDate: formatDate(lastMonthEnd) 
+      };
+    
+    case DATE_RANGES.THIS_YEAR:
+      const thisYearStart = new Date(today.getFullYear(), 0, 1);
+      return { 
+        startDate: formatDate(thisYearStart), 
+        endDate: formatDate(now) 
+      };
+    
+    case DATE_RANGES.CUSTOM:
+      return { 
+        startDate: formatDate(new Date(customRange.startDate)), 
+        endDate: formatDate(new Date(customRange.endDate)) 
+      };
+    
+    default:
+      return { 
+        startDate: formatDate(today), 
+        endDate: formatDate(now) 
+      };
+  }
+};
+
+// Report Service Object
 const reportService = {
-  /**
-   * Get sales report data
-   * @param {string} timeframe - Time period (daily, weekly, monthly, yearly)
-   * @param {Object} dateRange - Optional specific date range (startDate, endDate)
-   * @returns {Promise<Object>} Sales report data including chart data and summary metrics
-   */
-  getSalesReport: async (timeframe = 'daily', dateRange = {}) => {
-    try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('timeframe', timeframe);
-      
-      if (dateRange.startDate) {
-        queryParams.append('startDate', dateRange.startDate);
-      }
-      
-      if (dateRange.endDate) {
-        queryParams.append('endDate', dateRange.endDate);
-      }
-      
-      const queryString = `?${queryParams.toString()}`;
-      return await api.get(`/reports/sales${queryString}`);
-    } catch (error) {
-      console.error('Error fetching sales report:', error);
-      throw error;
-    }
+  // Sales Reports
+  getSalesReport: async (dateRange) => {
+    return api.get('/reports/sales', { params: dateRange });
+  },
+  
+  getSalesByCategory: async (dateRange) => {
+    return api.get('/reports/sales/category', { params: dateRange });
+  },
+  
+  getSalesByProduct: async (dateRange) => {
+    return api.get('/reports/sales/products', { params: dateRange });
+  },
+  
+  getSalesTrends: async (dateRange, interval = 'day') => {
+    return api.get('/reports/sales/trends', { 
+      params: { ...dateRange, interval } 
+    });
+  },
+  
+  // Inventory Reports
+  getInventoryReport: async () => {
+    return api.get('/reports/inventory');
+  },
+  
+  getInventoryValuation: async () => {
+    return api.get('/reports/inventory/valuation');
+  },
+  
+  getLowStockItems: async () => {
+    return api.get('/reports/inventory/low-stock');
+  },
+  
+  getInventoryByCategory: async () => {
+    return api.get('/reports/inventory/category');
+  },
+  
+  // Financial Reports
+  getFinancialSummary: async (dateRange) => {
+    return api.get('/reports/financial/summary', { params: dateRange });
+  },
+  
+  getProfitAndLoss: async (dateRange) => {
+    return api.get('/reports/financial/profit-loss', { params: dateRange });
+  },
+  
+  getCashFlow: async (dateRange) => {
+    return api.get('/reports/financial/cash-flow', { params: dateRange });
+  },
+  
+  // Expense Reports
+  getExpensesByCategory: async (dateRange) => {
+    return api.get('/reports/expenses/category', { params: dateRange });
+  },
+  
+  getExpensesTrends: async (dateRange, interval = 'day') => {
+    return api.get('/reports/expenses/trends', { 
+      params: { ...dateRange, interval } 
+    });
+  },
+  
+  // Supplier Reports
+  getSupplierReport: async () => {
+    return api.get('/reports/suppliers');
   },
 
-  /**
-   * Get inventory value trend data
-   * @returns {Promise<Object>} Inventory value trend data
-   */
-  getInventoryValueTrend: async () => {
+  // Add getCashDrawer method
+  getCashDrawer: async (dateRange) => {
     try {
-      const response = await api.get('/reports/inventory-value');
-      
-      // Ensure the response has the expected structure
-      if (!response || !response.chartData) {
-        throw new Error('Invalid response format from inventory value API');
-      }
-      
+      const response = await api.get('/reports/cash-drawer', { params: dateRange });
       return response;
     } catch (error) {
-      console.error('Error fetching inventory value trend:', error);
-      throw error;
+      console.error('Error fetching cash drawer data:', error);
+      // Return a structured error response similar to a successful response
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch cash drawer data',
+        data: []
+      };
     }
   },
 
-  /**
-   * Get sales by category data
-   * @param {string} timeframe - Time period (daily, weekly, monthly, yearly)
-   * @returns {Promise<Object>} Category distribution data
-   */
-  getCategorySales: async (timeframe = 'monthly') => {
+  // Add getExpenseTransactions method
+  getExpenseTransactions: async (dateRange) => {
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('timeframe', timeframe);
-      
-      const queryString = `?${queryParams.toString()}`;
-      const response = await api.get(`/reports/categories${queryString}`);
-      
-      // Ensure the response has the expected structure
-      if (!response || !response.chartData) {
-        throw new Error('Invalid response format from category sales API');
-      }
-      
+      const response = await api.get('/reports/expenses/transactions', { params: dateRange });
       return response;
     } catch (error) {
-      console.error('Error fetching category sales:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Export report data to CSV or PDF
-   * @param {string} reportType - Type of report to export
-   * @param {string} format - Export format (csv, pdf)
-   * @param {Object} filters - Any filters to apply
-   * @returns {Promise<Blob>} The file data
-   */
-  exportReport: async (reportType, format = 'csv', filters = {}) => {
-    try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('format', format);
-      
-      // Add any additional filters
-      Object.entries(filters).forEach(([key, value]) => {
-        queryParams.append(key, value);
-      });
-      
-      const queryString = `?${queryParams.toString()}`;
-      
-      // Using fetch directly to get a blob response
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/reports/export/${reportType}${queryString}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Export failed');
-      }
-      
-      return await response.blob();
-    } catch (error) {
-      console.error('Error exporting report:', error);
-      throw error;
+      console.error('Error fetching expense transactions:', error);
+      // Return a structured error response similar to a successful response
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch expense transactions',
+        data: []
+      };
     }
   }
 };
 
-export default reportService; 
+export default reportService;

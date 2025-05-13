@@ -15,7 +15,6 @@ import {
   Settings,
   ShoppingCart,
   Truck,
-  FileText,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react"
@@ -76,16 +75,10 @@ export function MainLayout({ children }: MainLayoutProps) {
       active: pathname === "/reports",
     },
     {
-      href: "/finance",
-      label: "Finance",
+      href: "/accounting",
+      label: "Accounting",
       icon: DollarSign,
-      active: pathname === "/finance",
-    },
-    {
-      href: "/tax",
-      label: "Tax",
-      icon: FileText,
-      active: pathname === "/tax",
+      active: pathname === "/accounting",
     },
     {
       href: "/settings",
