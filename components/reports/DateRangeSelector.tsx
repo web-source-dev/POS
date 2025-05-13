@@ -1,6 +1,6 @@
 "use client";
 
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
@@ -36,6 +36,8 @@ const DateRangeSelector: FC<DateRangeSelectorProps> = ({
     from: new Date(),
     to: new Date(),
   });
+  // Use a ref to track initialization
+  const isInitialized = useRef(false);
 
   // Handle predefined range selection
   const handleRangeChange = (value: string) => {
@@ -68,15 +70,18 @@ const DateRangeSelector: FC<DateRangeSelectorProps> = ({
     }
   };
 
-  // Initialize with default range
+  // Initialize with default range - only run once when component mounts
   useEffect(() => {
-    const initialRange = getDateRange(selectedRange);
-    onDateRangeChange(initialRange);
-    setDateRange({
-      from: new Date(initialRange.startDate),
-      to: new Date(initialRange.endDate),
-    });
-  }, [onDateRangeChange, selectedRange]);
+    if (!isInitialized.current) {
+      const initialRange = getDateRange(selectedRange);
+      onDateRangeChange(initialRange);
+      setDateRange({
+        from: new Date(initialRange.startDate),
+        to: new Date(initialRange.endDate),
+      });
+      isInitialized.current = true;
+    }
+  }, []);
 
   return (
     <div className={cn("flex items-center space-x-2", className)}>
