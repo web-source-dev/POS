@@ -76,7 +76,7 @@ const DateRangeSelector: FC<DateRangeSelectorProps> = ({
       from: new Date(initialRange.startDate),
       to: new Date(initialRange.endDate),
     });
-  }, []);
+  }, [onDateRangeChange, selectedRange]);
 
   return (
     <div className={cn("flex items-center space-x-2", className)}>

@@ -1,160 +1,102 @@
-import { api } from '@/lib/api';
+import { api } from '../lib/api';
 
 /**
- * Service for fetching dashboard-related data from the API
+ * Dashboard Service
+ * Provides functions to interact with the dashboard-related API endpoints
  */
 const dashboardService = {
   /**
-   * Get financial summary for the dashboard
+   * Get dashboard summary data
+   * @returns {Promise<Object>} Dashboard summary data
    */
-  getFinancialSummary: async (period = 'today') => {
+  getDashboardSummary: async () => {
     try {
-      const response = await api.get(`/finance/summary?period=${period}`);
-      return response.summary;
-    } catch (error) {
-      console.error('Error fetching financial summary:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get low stock and out of stock inventory items
-   */
-  getInventoryAlerts: async () => {
-    try {
-      const response = await api.get('/inventory?status=Low%20Stock,Out%20of%20Stock');
-      return response;
-    } catch (error) {
-      console.error('Error fetching inventory alerts:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get inventory statistics
-   */
-  getInventoryStats: async () => {
-    try {
-      const response = await api.get('/inventory/stats/summary');
-      return response;
-    } catch (error) {
-      console.error('Error fetching inventory statistics:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get recent sales transactions
-   */
-  getRecentTransactions: async (limit = 5) => {
-    try {
-      const response = await api.get(`/sales/history?limit=${limit}`);
-      return response;
-    } catch (error) {
-      console.error('Error fetching recent transactions:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get sales data for chart
-   */
-  getSalesChartData: async (timeframe = 'daily') => {
-    try {
-      const response = await api.get(`/reports/sales?timeframe=${timeframe}`);
-      return response.chartData;
-    } catch (error) {
-      console.error('Error fetching sales chart data:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get top selling items
-   */
-  getTopSellingItems: async (timeframe = 'monthly', limit = 5) => {
-    try {
-      // Assuming the backend has an endpoint for this
-      const response = await api.get(`/reports/top-selling?timeframe=${timeframe}&limit=${limit}`);
-      return response;
-    } catch (error) {
-      console.error('Error fetching top selling items:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get all inventory items
-   */
-  getAllInventory: async (category = '', search = '') => {
-    try {
-      let url = '/inventory';
-      const params = [];
+      const data = await api.get('/dashboard/summary');
       
-      if (category) {
-        params.push(`category=${encodeURIComponent(category)}`);
+      // Check if we should generate sample data if there's no data
+      if (data && !data.hasData) {
+        console.info('No dashboard data found, would you like to generate sample data?');
       }
       
-      if (search) {
-        params.push(`search=${encodeURIComponent(search)}`);
-      }
-      
-      if (params.length > 0) {
-        url += `?${params.join('&')}`;
-      }
-      
-      const response = await api.get(url);
-      return response;
+      return data;
     } catch (error) {
-      console.error('Error fetching inventory items:', error);
+      console.error('Error fetching dashboard summary:', error);
+      // Return default data structure to avoid UI crashes
+      return {
+        todaySales: { total: 0, count: 0 },
+        todayExpenses: { total: 0, count: 0 },
+        monthlySales: [],
+        monthlyExpenses: [],
+        inventoryStatus: [],
+        lowStockItems: [],
+        cashDrawerOperations: [],
+        latestSales: [],
+        inventoryValue: { totalValue: 0, totalItems: 0 },
+        error: error.message
+      };
+    }
+  },
+
+  /**
+   * Generate sample data for testing
+   * @returns {Promise<{success: boolean, message: string, counts?: Object}>} Sample data generation result
+   */
+  generateSampleData: async () => {
+    try {
+      return await api.post('/dashboard/generate-sample-data');
+    } catch (error) {
+      console.error('Error generating sample data:', error);
       throw error;
     }
   },
 
   /**
-   * Get inventory categories
+   * Get sales data by category
+   * @param {number} days - Number of days to fetch data for
+   * @returns {Promise<Array<{category: string, total: number}>>} Sales data by category
    */
-  getInventoryCategories: async () => {
+  getSalesByCategory: async (days = 30) => {
     try {
-      const response = await api.get('/inventory/categories/list');
-      return response;
-    } catch (error) {
-      console.error('Error fetching inventory categories:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get detailed sales report with summary
-   */
-  getSalesReport: async (timeframe = 'monthly', startDate = null, endDate = null) => {
-    try {
-      let url = `/reports/sales?timeframe=${timeframe}`;
-      
-      if (startDate && endDate) {
-        url += `&startDate=${startDate}&endDate=${endDate}`;
-      }
-      
-      const response = await api.get(url);
-      return response;
-    } catch (error) {
-      console.error('Error fetching sales report:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get sales by category data
-   */
-  getSalesByCategory: async (timeframe = 'monthly') => {
-    try {
-      const response = await api.get(`/reports/categories?timeframe=${timeframe}`);
-      return response.chartData;
+      return await api.get('/dashboard/sales-by-category', {
+        params: { days }
+      });
     } catch (error) {
       console.error('Error fetching sales by category:', error);
-      throw error;
+      return []; // Return empty array to avoid UI crashes
+    }
+  },
+
+  /**
+   * Get cash drawer balance history
+   * @param {number} days - Number of days to fetch data for
+   * @returns {Promise<Array<{date: string, balance: number}>>} Cash drawer balance history
+   */
+  getCashBalanceHistory: async (days = 14) => {
+    try {
+      return await api.get('/dashboard/cash-balance-history', {
+        params: { days }
+      });
+    } catch (error) {
+      console.error('Error fetching cash balance history:', error);
+      return []; // Return empty array to avoid UI crashes
+    }
+  },
+
+  /**
+   * Get expenses breakdown by category
+   * @param {number} days - Number of days to fetch data for
+   * @returns {Promise<Array<{category: string, total: number}>>} Expenses by category
+   */
+  getExpensesByCategory: async (days = 30) => {
+    try {
+      return await api.get('/dashboard/expenses-by-category', {
+        params: { days }
+      });
+    } catch (error) {
+      console.error('Error fetching expenses by category:', error);
+      return []; // Return empty array to avoid UI crashes
     }
   }
 };
 
-export default dashboardService; 
+export default dashboardService;

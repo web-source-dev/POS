@@ -37,12 +37,13 @@ const SalesChart: FC<SalesChartProps> = ({
   
   // Format currency
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PK', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'PKR',
+      currencyDisplay: 'narrowSymbol',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    }).format(value).replace(/PKR/g, 'Rs');
   };
 
   // Calculate max values for Y axis

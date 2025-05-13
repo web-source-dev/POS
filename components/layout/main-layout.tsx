@@ -81,6 +81,12 @@ export function MainLayout({ children }: MainLayoutProps) {
       active: pathname === "/accounting",
     },
     {
+      href: "/summary",
+      label: "Summary",
+      icon: BarChart3,
+      active: pathname === "/summary",
+    },
+    {
       href: "/settings",
       label: "Settings",
       icon: Settings,

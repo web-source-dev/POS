@@ -1,214 +1,295 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import {
-  AlertTriangle,
-  ArrowUp,
-  Box,
-  DollarSign,
-  ShoppingCart,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react"
+import { useState, useEffect, useCallback } from 'react';
+import { withAuthProtection } from '@/lib/protected-route';
+import dashboardService from '@/services/dashboardService';
+import { StatsCards } from './stats-cards';
+import { RecentSales } from './recent-sales';
+import { LowStockItems } from './low-stock-items';
+import { CashDrawerOperations } from './cash-drawer-operations';
+import { SalesChart } from './sales-chart';
+import { InventoryStatusChart } from './inventory-status-chart';
+import { ExpensesBreakdown } from './expenses-breakdown';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle, RefreshCw, Database, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SalesChart } from "@/components/dashboard/sales-chart"
-import { InventoryAlerts } from "@/components/dashboard/inventory-alerts"
-import { TopSellingItems } from "@/components/dashboard/top-selling-items"
-import { RecentTransactions } from "@/components/dashboard/recent-transactions"
-import { SalesAnalytics } from "@/components/dashboard/sales-analytics"
-import { InventoryOverview } from "@/components/dashboard/inventory-overview"
-import dashboardService from "@/services/dashboardService"
-
-// Types for dashboard data
-interface FinancialSummary {
-  cashBalance: number
-  lastUpdated: string
-  todaySales: {
-    amount: number
-    count: number
-  }
-  todayExpenses: {
-    amount: number
-    count: number
-  }
-  todayNetCashFlow: number
+// Import from the proper component files so types match
+interface SaleItem {
+  itemId: string;
+  name: string;
+  quantity: number;
+  price: number;
 }
 
-interface InventoryStats {
-  totalItems: number
-  lowStockItems: number
-  outOfStockItems: number
-  totalValue: number
+interface Sale {
+  _id: string;
+  receiptNumber: number;
+  items: SaleItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  cashAmount: number;
+  change: number;
+  customerName: string;
+  date: string;
 }
 
-export function MainDashboard() {
-  // State for dashboard data
-  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null)
-  const [inventoryStats, setInventoryStats] = useState<InventoryStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<string>("")
+interface InventoryItem {
+  _id: string;
+  name: string;
+  sku: string;
+  category: string;
+  price: number;
+  stock: number;
+  reorderLevel: number;
+  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+}
 
-  // Fetch dashboard data on component mount
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true)
-        
-        // Fetch financial summary
-        const summary = await dashboardService.getFinancialSummary('today')
-        setFinancialSummary(summary)
-        
-        // Fetch inventory statistics
-        const stats = await dashboardService.getInventoryStats()
-        setInventoryStats(stats as InventoryStats)
-        
-        // Set last updated timestamp
-        setLastUpdated(new Date().toLocaleString())
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error)
-      } finally {
-        setLoading(false)
+interface CashDrawerOperation {
+  _id: string;
+  date: string;
+  previousBalance: number;
+  amount: number;
+  balance: number;
+  operation: 'add' | 'remove' | 'count' | 'sale' | 'expense' | 'initialization' | 'close';
+  notes: string;
+}
+
+interface ExpenseCategory {
+  category: string;
+  total: number;
+}
+
+interface DashboardSummary {
+  todaySales: { total: number; count: number };
+  todayExpenses: { total: number; count: number };
+  monthlySales: Array<{ _id: string; total: number; count: number }>;
+  monthlyExpenses: Array<{ _id: string; total: number; count: number }>;
+  inventoryStatus: Array<{ _id: string; count: number }>;
+  lowStockItems: Array<InventoryItem>;
+  cashDrawerOperations: Array<CashDrawerOperation>;
+  latestSales: Array<Sale>;
+  inventoryValue: { totalValue: number; totalItems: number };
+  hasData?: boolean;
+  error?: string;
+}
+
+interface SampleDataResponse {
+  success: boolean;
+  message: string;
+  counts?: {
+    inventory: number;
+    sales: number;
+    expenses: number;
+    cashDrawer: number;
+  };
+}
+
+function MainDashboardContent() {
+  const [dashboardData, setDashboardData] = useState<DashboardSummary | null>(null);
+  const [expensesByCategory, setExpensesByCategory] = useState<ExpenseCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingSample, setIsGeneratingSample] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [noDataFound, setNoDataFound] = useState(false);
+  const [selectedTimeframe, setSelectedTimeframe] = useState('30');
+
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Fetch main dashboard data
+      const data = await dashboardService.getDashboardSummary() as DashboardSummary;
+      setDashboardData(data);
+      
+      // Check if data was found or if we have an empty dashboard
+      setNoDataFound(!data.hasData || !!data.error);
+      
+      // If there was an error, show it
+      if (data.error) {
+        setError(data.error);
       }
+      
+      // Fetch additional chart data
+      const expensesData = await dashboardService.getExpensesByCategory(parseInt(selectedTimeframe));
+      
+      // Only use the expensesByCategory data since it's the only one being used in the UI
+      setExpensesByCategory(expensesData);
+    } catch (err: unknown) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
+    } finally {
+      setIsLoading(false);
     }
+  }, [selectedTimeframe]);
 
-    fetchDashboardData()
-  }, [])
+  // Function to generate sample data for testing
+  const generateSampleData = async () => {
+    try {
+      setIsGeneratingSample(true);
+      setError(null);
+      
+      // Call the API to generate sample data
+      const result = await dashboardService.generateSampleData() as SampleDataResponse;
+      
+      if (result.success) {
+        // Refresh dashboard data after generating sample data
+        await fetchDashboardData();
+        setNoDataFound(false);
+      } else {
+        setError('Failed to generate sample data');
+      }
+    } catch (err: unknown) {
+      console.error('Error generating sample data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate sample data');
+    } finally {
+      setIsGeneratingSample(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [selectedTimeframe, fetchDashboardData]);
+
+  // Count low stock items
+  const lowStockCount = dashboardData?.inventoryStatus?.find(
+    (status) => status._id === 'Low Stock'
+  )?.count || 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+        <span>Loading dashboard data...</span>
+      </div>
+    );
+  }
+
+  // Show error message
+  if (error) {
+    return (
+      <Alert variant="destructive" className="m-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription className="flex flex-col gap-2">
+          <div>{error}</div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={fetchDashboardData}
+              className="mt-2"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try again
+            </Button>
+          </div>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Show no data message with option to generate sample data
+  if (noDataFound) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen p-4">
+        <Alert variant="default" className="max-w-2xl mb-4">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle>No Dashboard Data Found</AlertTitle>
+          <AlertDescription>
+            Your dashboard is empty. You can generate sample data for testing purposes or start adding real data through the inventory, sales, and expenses modules.
+          </AlertDescription>
+        </Alert>
+        
+        <div className="flex gap-4 mt-4">
+          <Button 
+            onClick={generateSampleData}
+            disabled={isGeneratingSample}
+          >
+            {isGeneratingSample ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Database className="h-4 w-4 mr-2" />
+                Generate Sample Data
+              </>
+            )}
+          </Button>
+          
+          <Button 
+            variant="outline"
+            onClick={fetchDashboardData}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <div className="flex items-center space-x-2">
-          <p className="text-sm text-muted-foreground">Last updated: {lastUpdated}</p>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchDashboardData}
+            className="mr-2"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Tabs 
+            defaultValue={selectedTimeframe} 
+            className="w-[400px]"
+            onValueChange={setSelectedTimeframe}
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="7">Last 7 Days</TabsTrigger>
+              <TabsTrigger value="30">Last 30 Days</TabsTrigger>
+              <TabsTrigger value="90">Last 90 Days</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sales">Sales</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
-        </TabsList>
+      {/* Key Metrics */}
+      <StatsCards 
+        todaySales={dashboardData?.todaySales || { total: 0, count: 0 }}
+        todayExpenses={dashboardData?.todayExpenses || { total: 0, count: 0 }}
+        inventoryValue={dashboardData?.inventoryValue || { totalValue: 0, totalItems: 0 }}
+        lowStockCount={lowStockCount}
+      />
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Sales Today</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  Rs {loading ? "..." : financialSummary?.todaySales.amount.toFixed(2) || "0.00"}
-                </div>
-                <p className="text-xs text-muted-foreground flex items-center mt-1">
-                  {/* When we have historical data, we could show a trend */}
-                  <TrendingUp className="mr-1 h-4 w-4 text-green-600" />
-                  <span className="text-green-600 font-medium">{financialSummary?.todaySales.count || 0}</span> transactions today
-                </p>
-              </CardContent>
-            </Card>
+      {/* Charts Section */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <SalesChart 
+          salesData={dashboardData?.monthlySales || []}
+          expensesData={dashboardData?.monthlyExpenses || []}
+        />
+        <ExpensesBreakdown expensesData={expensesByCategory} />
+      </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Expenses Today</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  Rs {loading ? "..." : financialSummary?.todayExpenses.amount.toFixed(2) || "0.00"}
-                </div>
-                <p className="text-xs text-muted-foreground flex items-center mt-1">
-                  <TrendingDown className="mr-1 h-4 w-4 text-red-600" />
-                  <span className="text-red-600 font-medium">{financialSummary?.todayExpenses.count || 0}</span> expense transactions
-                </p>
-              </CardContent>
-            </Card>
+      {/* Secondary Charts & Tables */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <RecentSales sales={dashboardData?.latestSales || []} />
+        <LowStockItems items={dashboardData?.lowStockItems || []} />
+      </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{loading ? "..." : (inventoryStats?.lowStockItems || 0) + (inventoryStats?.outOfStockItems || 0)}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {inventoryStats?.outOfStockItems || 0} items out of stock
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
-                <Box className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  Rs {loading ? "..." : inventoryStats?.totalValue.toFixed(0) || "0"}
-                </div>
-                <p className="text-xs text-muted-foreground flex items-center mt-1">
-                  <ArrowUp className="mr-1 h-4 w-4 text-green-600" />
-                  <span className="text-green-600 font-medium">{inventoryStats?.totalItems || 0}</span> total items
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Sales Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <SalesChart />
-              </CardContent>
-            </Card>
-
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Inventory Alerts</CardTitle>
-                <CardDescription>Items requiring attention</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <InventoryAlerts />
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>Latest sales transactions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RecentTransactions />
-              </CardContent>
-            </Card>
-
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Top Selling Items</CardTitle>
-                <CardDescription>Best performing products this month</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TopSellingItems />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="sales" className="space-y-4">
-          <SalesAnalytics />
-        </TabsContent>
-
-        <TabsContent value="inventory" className="space-y-4">
-          <InventoryOverview />
-        </TabsContent>
-      </Tabs>
+      <div className="grid gap-6 md:grid-cols-2">
+        <CashDrawerOperations operations={dashboardData?.cashDrawerOperations || []} />
+        <InventoryStatusChart statusData={dashboardData?.inventoryStatus || []} />
+      </div>
     </div>
-  )
+  );
 }
+
+export const MainDashboard = withAuthProtection(MainDashboardContent);

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { 
   ArrowLeft, Package, FileText, 
   Search, X, Download,
-  RefreshCw
+  RefreshCw, History
 } from "lucide-react"
 import { format } from "date-fns"
 
@@ -171,6 +171,9 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
   // Calculate total sales and revenue
   const totalSales = filteredSalesData.reduce((sum, sale) => sum + sale.quantity, 0)
   const totalRevenue = filteredSalesData.reduce((sum, sale) => sum + sale.total, 0)
+  
+  // Calculate total historical stock (current stock + all sold quantity)
+  const totalHistoricalStock = (item?.stock || 0) + totalSales
 
   const handleBackToInventory = () => {
     router.push('/inventory')
@@ -314,6 +317,22 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
                   )}>
                     {item?.stock} {item?.unitOfMeasure !== "each" ? `(${item?.unitOfMeasure})` : ""}
                   </p>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                    <span className="flex items-center">
+                      <History className="h-3.5 w-3.5 mr-1" />
+                      Total Historical Stock
+                    </span>
+                  </h3>
+                  <div className="flex items-center">
+                    <p className="font-medium">{totalHistoricalStock} {item?.unitOfMeasure !== "each" ? `(${item?.unitOfMeasure})` : ""}</p>
+                    <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200">
+                      {item?.stock} current + {totalSales} sold
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Total stock ever in inventory</p>
                 </div>
                 
                 <div>
@@ -491,7 +510,7 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
           </div>
           
           {/* Sales statistics */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
                 <div className="flex flex-col">
@@ -525,6 +544,22 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
                   </span>
                   <span className="text-xs text-muted-foreground">
                     average selling price
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col">
+                  <span className="text-sm text-muted-foreground">Stock Turnover</span>
+                  <span className="text-2xl font-bold">
+                    {totalHistoricalStock > 0 
+                      ? `${((totalSales / totalHistoricalStock) * 100).toFixed(1)}%` 
+                      : "0%"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    of total stock has been sold
                   </span>
                 </div>
               </CardContent>

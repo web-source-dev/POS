@@ -1,88 +1,162 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "@/components/ui/chart"
-import dashboardService from "@/services/dashboardService"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart } from "lucide-react";
 
-interface ApiSalesChartData {
-  name: string;
-  sales: number;
+interface DailySales {
+  _id: string; // Date string in format YYYY-MM-DD
+  total: number;
+  count: number;
 }
 
-interface SalesChartDataPoint {
-  name: string
-  sales: number
+interface DailyExpenses {
+  _id: string; // Date string in format YYYY-MM-DD
+  total: number;
+  count: number;
 }
 
-export function SalesChart() {
-  const [chartData, setChartData] = useState<SalesChartDataPoint[]>([])
-  const [loading, setLoading] = useState(true)
+interface SalesChartProps {
+  salesData: DailySales[];
+  expensesData?: DailyExpenses[];
+  title?: string;
+  showExpenses?: boolean;
+}
 
-  useEffect(() => {
-    const fetchChartData = async () => {
-      try {
-        setLoading(true)
-        const data = await dashboardService.getSalesChartData('daily')
-        
-        // Transform data if needed to match our chart format
-        const formattedData = data.map((item: ApiSalesChartData) => ({
-          name: item.name || '',
-          sales: Number(item.sales) || 0
-        }))
-        
-        setChartData(formattedData)
-      } catch (error) {
-        console.error("Error fetching sales chart data:", error)
-        // Fallback data if API fails
-        setChartData([
-          { name: "No Data", sales: 0 }
-        ])
-      } finally {
-        setLoading(false)
+export function SalesChart({ 
+  salesData, 
+  expensesData = [], 
+  title = "Monthly Sales", 
+  showExpenses = true 
+}: SalesChartProps) {
+  // Prepare combined data for the chart
+  const prepareChartData = () => {
+    // Create a map for all dates in the month
+    const allDatesMap = new Map<string, { date: string, sales: number, expenses: number }>();
+    
+    // Get all dates from both datasets
+    [...salesData, ...expensesData].forEach(item => {
+      if (!allDatesMap.has(item._id)) {
+        allDatesMap.set(item._id, {
+          date: item._id,
+          sales: 0,
+          expenses: 0
+        });
       }
+    });
+    
+    // Add sales data
+    salesData.forEach(sale => {
+      const dateData = allDatesMap.get(sale._id);
+      if (dateData) {
+        dateData.sales = sale.total;
+      }
+    });
+    
+    // Add expenses data
+    expensesData.forEach(expense => {
+      const dateData = allDatesMap.get(expense._id);
+      if (dateData) {
+        dateData.expenses = expense.total;
+      }
+    });
+    
+    // Convert map to array and sort by date
+    const chartData = Array.from(allDatesMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date));
+    
+    return chartData;
+  };
+
+  const chartData = prepareChartData();
+  
+  // Function to format date labels on X-axis
+  const formatXAxis = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.getDate().toString(); // Just show the day of month
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return dateStr;
     }
+  };
+  
+  // Custom tooltip formatter
+  const CustomTooltip = ({ active, payload, label }: { active: boolean, payload: { name: string, value: number, color: string }[], label: string }) => {
+    if (active && payload && payload.length) {
+      const date = new Date(label);
+      const formattedDate = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      
+      return (
+        <div className="bg-background p-2 border rounded shadow-sm">
+          <p className="font-medium">{formattedDate}</p>
+          {payload.map((entry: { name: string, value: number, color: string }, index: number) => (
+            <p key={`tooltip-${index}`} style={{ color: entry.color }} className="text-sm">
+              {entry.name}: {formatCurrency(entry.value)}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    
+    return null;
+  };
 
-    fetchChartData()
-  }, [])
-
-  // Show loading state
-  if (loading) {
+  if (!chartData || chartData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[300px]">
-        <p className="text-muted-foreground">Loading chart data...</p>
-      </div>
-    )
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-md font-medium">{title}</CardTitle>
+          <LineChart className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent className="h-80 flex items-center justify-center">
+          <p className="text-sm text-muted-foreground">No data available</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-        <YAxis
-          stroke="#888888"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(value) => `Rs ${value}`}
-        />
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <Tooltip
-          formatter={(value: number) => [`Rs ${value}`, "Sales"]}
-          contentStyle={{
-            backgroundColor: "hsl(var(--background))",
-            borderColor: "hsl(var(--border))",
-          }}
-          itemStyle={{ color: "hsl(var(--foreground))" }}
-          labelStyle={{ color: "hsl(var(--foreground))" }}
-        />
-        <Area type="monotone" dataKey="sales" stroke="#f97316" fillOpacity={1} fill="url(#colorSales)" />
-      </AreaChart>
-    </ResponsiveContainer>
-  )
-}
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-md font-medium">{title}</CardTitle>
+        <LineChart className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={chartData}
+            margin={{
+              top: 20,
+              right: 30,
+              left: 20,
+              bottom: 5,
+            }}
+          >
+            <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+            <XAxis 
+              dataKey="date" 
+              tickFormatter={formatXAxis} 
+              tick={{ fontSize: 12 }}
+            />
+            <YAxis 
+              tickFormatter={(value) => formatCurrency(value)} 
+              tick={{ fontSize: 12 }}
+            />
+            <Tooltip content={<CustomTooltip active={false} payload={[]} label={''} />} />
+            <Legend />
+            <Bar dataKey="sales" name="Sales" fill="#38bdf8" radius={[4, 4, 0, 0]} />
+            {showExpenses && (
+              <Bar dataKey="expenses" name="Expenses" fill="#f97316" radius={[4, 4, 0, 0]} />
+            )}
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+} 
