@@ -379,7 +379,6 @@ const FinancialReportView: FC<FinancialReportViewProps> = ({ dateRange }) => {
             columns={financialColumns}
             title="Profit & Loss Statement"
             description="Detailed breakdown of revenue, expenses and profit"
-            onRowClick={handleFinancialRowClick}
           />
         </TabsContent>
         <TabsContent value="expenses" className="pt-4">
@@ -471,7 +470,6 @@ const FinancialReportView: FC<FinancialReportViewProps> = ({ dateRange }) => {
               ]}
               title="Monthly Expense Breakdown"
               description="Detailed breakdown of expenses by category and month"
-              onRowClick={handleExpenseDetailsRowClick}
             />
           </CardContent>
         </Card>
