@@ -21,7 +21,8 @@ import {
   Wallet,
   BarChart4,
   Info,
-  FileText
+  FileText,
+  Download
 } from 'lucide-react';
 
 export const TransactionDetailPage = withAuthProtection(() => {
@@ -32,6 +33,7 @@ export const TransactionDetailPage = withAuthProtection(() => {
   const [transaction, setTransaction] = useState<CashDrawerTransaction | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
 
   useEffect(() => {
     if (!id) {
@@ -58,6 +60,127 @@ export const TransactionDetailPage = withAuthProtection(() => {
 
   const handleBack = () => {
     router.back();
+  };
+
+  // Helper function to escape CSV values properly
+  const escapeCSV = (value: string | number) => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    
+    const stringValue = String(value);
+    // If value contains commas, quotes, or newlines, wrap in quotes and escape any quotes
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+  
+  // Handle export functionality
+  const handleExport = () => {
+    if (!transaction) return;
+    
+    try {
+      // Create CSV content with sections
+      const rows = [];
+      
+      // Add header section
+      rows.push(['TRANSACTION DETAILS REPORT', '', '', '']);
+      rows.push(['Date Generated:', new Date().toLocaleString(), '', '']);
+      rows.push(['', '', '', '']);
+      
+      // Add basic transaction info
+      rows.push(['TRANSACTION INFORMATION', '', '', '']);
+      rows.push(['Transaction ID:', transaction._id, '', '']);
+      rows.push(['Operation:', financeService.getOperationDisplayName(transaction.operation), '', '']);
+      rows.push(['Date:', financeService.formatDateTime(transaction.date), '', '']);
+      rows.push(['Amount:', financeService.formatCurrency(transaction.amount), '', '']);
+      rows.push(['Previous Balance:', financeService.formatCurrency(transaction.previousBalance), '', '']);
+      rows.push(['New Balance:', financeService.formatCurrency(transaction.balance), '', '']);
+      
+      if (transaction.notes) {
+        rows.push(['Notes:', transaction.notes, '', '']);
+      }
+      
+      rows.push(['', '', '', '']);
+      
+      // If this is a sale transaction with details, add those
+      if (transaction.operation === 'sale' && transaction.saleDetails) {
+        rows.push(['SALE DETAILS', '', '', '']);
+        if (transaction.saleDetails.receiptNumber) {
+          rows.push(['Receipt Number:', transaction.saleDetails.receiptNumber, '', '']);
+        }
+        if (transaction.saleDetails.customerName) {
+          rows.push(['Customer:', transaction.saleDetails.customerName, '', '']);
+        }
+        rows.push(['Total Amount:', financeService.formatCurrency(transaction.saleDetails.total), '', '']);
+        rows.push(['Cash Received:', financeService.formatCurrency(transaction.saleDetails.cashAmount), '', '']);
+        rows.push(['Change Given:', financeService.formatCurrency(transaction.saleDetails.change), '', '']);
+        rows.push(['', '', '', '']);
+        
+        // Add items section if there are items
+        if (transaction.saleDetails.items && transaction.saleDetails.items.length > 0) {
+          rows.push(['PURCHASED ITEMS', '', '', '']);
+          rows.push(['Item Name', 'SKU', 'Quantity', 'Price', 'Total']);
+          
+          transaction.saleDetails.items.forEach(item => {
+            rows.push([
+              item.name,
+              item.sku || 'N/A',
+              item.quantity.toString(),
+              financeService.formatCurrency(item.price),
+              financeService.formatCurrency(item.price * item.quantity)
+            ]);
+          });
+          
+          rows.push(['', '', '', '', '']);
+          rows.push(['Subtotal:', '', '', '', financeService.formatCurrency(transaction.saleDetails.subtotal)]);
+          
+          if (transaction.saleDetails.discount > 0) {
+            rows.push(['Discount:', '', '', '', financeService.formatCurrency(transaction.saleDetails.discount)]);
+          }
+          
+          rows.push(['Total:', '', '', '', financeService.formatCurrency(transaction.saleDetails.total)]);
+        }
+      }
+      
+      // Format with proper escaping
+      let csvContent = '';
+      
+      // Add data rows
+      rows.forEach(row => {
+        csvContent += row.map(value => escapeCSV(value)).join(',') + '\r\n';
+      });
+      
+      // Add BOM for better Excel compatibility with UTF-8
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Create descriptive filename
+      const operationName = financeService.getOperationDisplayName(transaction.operation).toLowerCase().replace(/\s+/g, '_');
+      link.href = url;
+      link.setAttribute('download', `${operationName}_transaction_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      setSuccess('Transaction details exported successfully');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error exporting transaction details:', error);
+      setError('Failed to export transaction details. Please try again.');
+    }
   };
 
   if (loading) {
@@ -159,7 +282,7 @@ export const TransactionDetailPage = withAuthProtection(() => {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Breadcrumb & Back Navigation */}
-      <div className="mb-6">
+      <div className="mb-6 flex justify-between items-center">
         <button
           onClick={handleBack}
           className="inline-flex items-center px-3 py-1.5 text-xs border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -167,7 +290,31 @@ export const TransactionDetailPage = withAuthProtection(() => {
           <ArrowLeft size={14} className="mr-1" />
           Back
         </button>
+        
+        {transaction && (
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center px-3 py-1.5 text-xs border border-border rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            <Download size={14} className="mr-1" />
+            Export Details
+          </button>
+        )}
       </div>
+
+      {/* Error message display */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded relative mb-4" role="alert">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+      
+      {/* Success message display */}
+      {success && (
+        <div className="bg-primary/10 border border-primary text-primary px-4 py-3 rounded relative mb-4" role="alert">
+          <span className="block sm:inline">{success}</span>
+        </div>
+      )}
 
       {/* Transaction Header */}
       <div className={`mb-8 bg-muted rounded-xl p-6 shadow-sm border border-border`}>

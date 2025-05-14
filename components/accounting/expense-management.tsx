@@ -6,7 +6,7 @@ import { financeService, Expense, PaymentMethod, ExpenseStatus } from '@/service
 import { withAuthProtection } from '@/lib/protected-route';
 import { 
   Plus, X, Edit, Trash2, Calendar, FileText, DollarSign, 
-  CreditCard, CheckCircle, Clock, Eye
+  CreditCard, CheckCircle, Clock, Eye, Download
 } from 'lucide-react';
 
 const paymentMethods: PaymentMethod[] = ['Cash', 'Credit Card', 'Bank Transfer', 'Check', 'Other'];
@@ -217,6 +217,108 @@ export const ExpenseManagement = withAuthProtection(() => {
     return expense.status === 'Pending' ? sum + expense.amount : sum;
   }, 0);
   
+  // Helper function to escape CSV values properly
+  const escapeCSV = (value: string | number) => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    
+    const stringValue = String(value);
+    // If value contains commas, quotes, or newlines, wrap in quotes and escape any quotes
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+  
+  // Handle export functionality
+  const handleExport = () => {
+    try {
+      // Create CSV content
+      const headers = ["ID", "Date", "Category", "Description", "Amount", "Payment Method", "Status"];
+      
+      const rows = expenses.map(expense => {
+        return [
+          expense.expenseId,
+          financeService.formatDate(expense.date),
+          expense.category,
+          expense.description || "",
+          expense.amount.toFixed(2),
+          expense.paymentMethod,
+          expense.status,
+        ];
+      });
+      
+      // Add summary row at the end
+      rows.push([]); // Empty row
+      rows.push(["SUMMARY", "", "", "", "", "", "", ""]);
+      rows.push(["Total Expenses:", "", "", "", totalExpenses.toFixed(2), "", "", ""]);
+      rows.push(["Paid Expenses:", "", "", "", paidExpenses.toFixed(2), "", "", ""]);
+      rows.push(["Pending Expenses:", "", "", "", pendingExpenses.toFixed(2), "", "", ""]);
+      
+      // Format with proper escaping
+      let csvContent = '';
+      
+      // Add headers row
+      csvContent += headers.map(header => escapeCSV(header)).join(',') + '\r\n';
+      
+      // Add data rows
+      rows.forEach(row => {
+        csvContent += row.map(value => escapeCSV(value)).join(',') + '\r\n';
+      });
+      
+      // Add BOM for better Excel compatibility with UTF-8
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      // Create filename with date filter info
+      let filename = 'expenses';
+      if (startDate && endDate) {
+        filename += `_${startDate}_to_${endDate}`;
+      } else if (startDate) {
+        filename += `_from_${startDate}`;
+      } else if (endDate) {
+        filename += `_until_${endDate}`;
+      }
+      
+      if (selectedCategory) {
+        filename += `_${selectedCategory}`;
+      }
+      
+      if (selectedStatus) {
+        filename += `_${selectedStatus}`;
+      }
+      
+      filename += `_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      setSuccess('Expenses exported successfully');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error exporting expenses:', error);
+      setError('Failed to export expenses. Please try again.');
+      
+      // Clear error message after 3 seconds
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <header className="mb-8">
@@ -293,6 +395,14 @@ export const ExpenseManagement = withAuthProtection(() => {
             >
               <X size={16} className="mr-1" />
               Clear Filters
+            </button>
+            <button
+              onClick={handleExport}
+              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 flex items-center"
+              disabled={expenses.length === 0}
+            >
+              <Download size={16} className="mr-1" />
+              Export
             </button>
             <button
               onClick={handleCreateExpense}

@@ -254,10 +254,16 @@ function TodayPage() {
 
   const handleExportData = async () => {
     try {
-      await todayService.exportTodayData();
       toast({
-        title: "Export started",
-        description: "Your data is being downloaded.",
+        title: "Preparing export",
+        description: "Generating today's data report...",
+      });
+      
+      await todayService.exportTodayData();
+      
+      toast({
+        title: "Export successful",
+        description: "Your daily report has been downloaded as CSV.",
       });
     } catch (error) {
       console.error('Error exporting data:', error);
@@ -303,7 +309,7 @@ function TodayPage() {
           <h1 className="text-3xl font-bold tracking-tight">Today&apos;s Summary</h1>
           <Button onClick={handleExportData} className="flex items-center gap-2">
             <Download className="h-4 w-4" />
-            Export Receipts
+            Export Daily Report
           </Button>
         </div>
         

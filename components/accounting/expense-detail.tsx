@@ -6,7 +6,7 @@ import { financeService, Expense, PaymentMethod, ExpenseStatus } from '@/service
 import { withAuthProtection } from '@/lib/protected-route';
 import { 
   ArrowLeft, DollarSign, CreditCard, Calendar, 
-  AlertCircle, Edit, FileText, List
+  AlertCircle, Edit, FileText, List, Download
 } from 'lucide-react';
 
 const paymentMethods: PaymentMethod[] = ['Cash', 'Credit Card', 'Bank Transfer', 'Check', 'Other'];
@@ -155,6 +155,84 @@ export const ExpenseDetailPage = withAuthProtection(() => {
     }
   };
 
+  // Helper function to escape CSV values properly
+  const escapeCSV = (value: string | number) => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    
+    const stringValue = String(value);
+    // If value contains commas, quotes, or newlines, wrap in quotes and escape any quotes
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+  
+  // Handle export functionality
+  const handleExport = () => {
+    if (!expense) return;
+    
+    try {
+      // Create CSV content with two sections: headers and details
+      const rows = [];
+      
+      // Add header section
+      rows.push(['EXPENSE DETAILS REPORT', '', '']);
+      rows.push(['Date Generated:', new Date().toLocaleString(), '']);
+      rows.push(['', '', '']);
+      
+      // Add basic info
+      rows.push(['BASIC INFORMATION', '', '']);
+      rows.push(['Expense ID:', expense.expenseId, '']);
+      rows.push(['Category:', expense.category, '']);
+      rows.push(['Amount:', financeService.formatCurrency(expense.amount), '']);
+      rows.push(['Status:', expense.status, '']);
+      rows.push(['Date:', financeService.formatDate(expense.date), '']);
+      rows.push(['Payment Method:', expense.paymentMethod, '']);
+      rows.push(['Description:', expense.description || 'N/A', '']);
+      rows.push(['Created At:', financeService.formatDateTime(expense.createdAt), '']);
+      rows.push(['', '', '']);
+      
+      // Format with proper escaping
+      let csvContent = '';
+      
+      // Add data rows
+      rows.forEach(row => {
+        csvContent += row.map(value => escapeCSV(value)).join(',') + '\r\n';
+      });
+      
+      // Add BOM for better Excel compatibility with UTF-8
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `expense_${expense.expenseId}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      setSuccess('Expense details exported successfully');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error exporting expense details:', error);
+      setError('Failed to export expense details. Please try again.');
+      
+      // Clear error message after 3 seconds
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
   if (loading && !expense) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -233,13 +311,22 @@ export const ExpenseDetailPage = withAuthProtection(() => {
           </button>
           <h1 className="text-3xl font-bold text-foreground">Expense Details</h1>
         </div>
-        <button
-          onClick={handleViewAllExpenses}
-          className="inline-flex items-center px-4 py-2 border border-border text-sm font-medium rounded-md shadow-sm text-foreground bg-background hover:bg-muted"
-        >
-          <List size={16} className="mr-2" />
-          View All Expenses
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center px-4 py-2 border border-border text-sm font-medium rounded-md shadow-sm text-foreground bg-background hover:bg-muted"
+          >
+            <Download size={16} className="mr-2" />
+            Export
+          </button>
+          <button
+            onClick={handleViewAllExpenses}
+            className="inline-flex items-center px-4 py-2 border border-border text-sm font-medium rounded-md shadow-sm text-foreground bg-background hover:bg-muted"
+          >
+            <List size={16} className="mr-2" />
+            View All Expenses
+          </button>
+        </div>
       </div>
       
       {/* Success & Error Messages */}

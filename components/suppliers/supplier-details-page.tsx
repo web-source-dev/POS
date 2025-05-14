@@ -185,7 +185,6 @@ export function SupplierDetailsPage({ supplierId }: { supplierId: string }) {
           >
             {supplier.status}
           </Badge>
-          <span className="text-muted-foreground">ID: {supplier._id}</span>
         </div>
       </div>
 

@@ -241,24 +241,40 @@ function PurchasesPageContent() {
   const handleExport = () => {
     try {
       // Create CSV content
-      const headers = ["Receipt Number", "Order ID", "Customer", "Date", "Items", "Total", "Payment Method"]
-      const rows = filteredPurchases.map(purchase => [
-        purchase.receiptNumber || formatReceiptNumber(purchase._id),
-        purchase._id,
-        purchase.customerName || "Walk-in Customer",
-        formatDate(purchase.date),
-        purchase.items.length.toString(),
-        purchase.total.toFixed(2),
-        "Cash"
-      ])
+      const headers = ["Receipt Number", "Customer", "Date", "Items", "Total", "Payment Method"]
       
+      // Helper function to escape CSV values properly
+      const escapeCSV = (value: string) => {
+        // If value contains commas, quotes, or newlines, wrap in quotes and escape any quotes
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          return `"${value.replace(/"/g, '""')}"`
+        }
+        return value
+      }
+      
+      const rows = filteredPurchases.map(purchase => {
+        // Create and escape each field properly
+        const rowData = [
+          purchase.receiptNumber || formatReceiptNumber(purchase._id),
+          purchase.customerName || "Walk-in Customer",
+          formatDate(purchase.date),
+          purchase.items.length.toString(),
+          purchase.total.toFixed(2),
+          "Cash"  // Default payment method
+        ]
+        // Escape each value to ensure proper CSV formatting
+        return rowData.map(item => escapeCSV(item))
+      })
+      
+      // Join everything with proper line breaks
       const csvContent = [
-        headers.join(","),
+        headers.map(header => escapeCSV(header)).join(","),
         ...rows.map(row => row.join(","))
-      ].join("\n")
+      ].join("\r\n") // Use \r\n for better Excel compatibility
       
-      // Create a blob and download link
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+      // Create a blob with proper BOM for Excel compatibility
+      const BOM = "\uFEFF" // Byte Order Mark helps Excel recognize UTF-8
+      const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" })
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.setAttribute("href", url)

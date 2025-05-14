@@ -309,6 +309,25 @@ export function ReceiptPrinter({ receiptData, settings, onPrintComplete }: Recei
                 color: #666;
               }
               
+              .footer-branding {
+                font-style: normal;
+                font-size: 11px;
+                color: #555;
+              }
+              
+              .footer-branding .company {
+                font-weight: bold;
+                font-size: 12px;
+              }
+              
+              .footer-branding .tagline {
+                font-style: italic;
+              }
+              
+              .footer-branding .contact {
+                font-size: 11px;
+              }
+              
               /* Automatic print when loaded */
               @media print {
                 @page {
@@ -436,6 +455,11 @@ export function ReceiptPrinter({ receiptData, settings, onPrintComplete }: Recei
                 
                 <div class="receipt-footer">
                   ${pos.receiptFooter ? pos.receiptFooter : 'Thank you for your business!'}
+                  <div class="footer-branding">
+                    <div class="company">Brought to you by RTN GLOBAL</div>
+                    <div class="tagline">Smart software. Simple solutions.</div>
+                    <div class="contact">+92 310 7864419</div>
+                  </div>
                 </div>
                 
                 <div class="watermark">Customer Copy</div>
@@ -523,6 +547,11 @@ export function ReceiptPrinter({ receiptData, settings, onPrintComplete }: Recei
                 
                 <div class="receipt-footer">
                   ${pos.receiptFooter ? pos.receiptFooter : 'Thank you for your business!'}
+                  <div class="footer-branding">
+                    <div class="company">Brought to you by RTN GLOBAL</div>
+                    <div class="tagline">Smart software. Simple solutions.</div>
+                    <div class="contact">+92 310 7864419</div>
+                  </div>
                 </div>
                 
                 <div class="watermark">Merchant Copy</div>

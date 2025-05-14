@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { 
@@ -32,14 +33,22 @@ export function StatsCards({
   inventoryValue,
   lowStockCount
 }: StatsCardsProps) {
+  const router = useRouter();
   // Calculate daily profit
   const dailyProfit = todaySales.total - todayExpenses.total;
   const isProfitPositive = dailyProfit >= 0;
 
+  const handleCardClick = (path: string) => {
+    router.push(path);
+  };
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {/* Today's Sales Card */}
-      <Card>
+      <Card 
+        className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
+        onClick={() => handleCardClick("/purchases")}
+      >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Today&apos;s Sales</CardTitle>
           <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -53,7 +62,10 @@ export function StatsCards({
       </Card>
 
       {/* Today's Expenses Card */}
-      <Card>
+      <Card 
+        className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
+        onClick={() => handleCardClick("/accounting")}
+      >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Today&apos;s Expenses</CardTitle>
           <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -67,7 +79,10 @@ export function StatsCards({
       </Card>
 
       {/* Today's Profit Card */}
-      <Card>
+      <Card 
+        className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
+        onClick={() => handleCardClick("/today")}
+      >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Today&apos;s Profit</CardTitle>
           {isProfitPositive ? (
@@ -87,7 +102,10 @@ export function StatsCards({
       </Card>
 
       {/* Inventory Summary Card */}
-      <Card>
+      <Card 
+        className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
+        onClick={() => handleCardClick("/inventory")}
+      >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">Inventory</CardTitle>
           <Package className="h-4 w-4 text-muted-foreground" />

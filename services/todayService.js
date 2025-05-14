@@ -56,7 +56,7 @@ const todayService = {
       // Create and use a download link with improved filename
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `receipt-export-${dateString}.csv`);
+      link.setAttribute('download', `today-report-${dateString}.csv`);
       document.body.appendChild(link);
       link.click();
       

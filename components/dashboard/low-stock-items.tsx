@@ -63,7 +63,6 @@ export function LowStockItems({ items }: LowStockItemsProps) {
               <TableHead>Category</TableHead>
               <TableHead className="text-center">Stock</TableHead>
               <TableHead className="text-center">Reorder Level</TableHead>
-              <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -78,13 +77,6 @@ export function LowStockItems({ items }: LowStockItemsProps) {
                   </span>
                 </TableCell>
                 <TableCell className="text-center">{item.reorderLevel}</TableCell>
-                <TableCell className="text-right">
-                  <Button asChild size="sm" variant="outline">
-                    <Link href={`/inventory/edit/${item._id}`}>
-                      Restock
-                    </Link>
-                  </Button>
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>

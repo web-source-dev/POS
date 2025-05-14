@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { financeService, CashDrawerTransaction } from '@/services/financeService';
 import { withAuthProtection } from '@/lib/protected-route';
-import { ArrowUp, ArrowDown, RefreshCw, Clock, DollarSign, FileText, CreditCard } from 'lucide-react';
+import { ArrowUp, ArrowDown, RefreshCw, Clock, DollarSign, FileText, CreditCard, Download } from 'lucide-react';
 import { ExpenseManagement } from './expense-management';
 
 // No need to redefine these interfaces since we're importing them
@@ -102,6 +102,86 @@ export const FinancePage = withAuthProtection(() => {
       localStorage.setItem('financeActiveTab', 'expenses');
     } else {
       localStorage.removeItem('financeActiveTab');
+    }
+  };
+
+  // Helper function to escape CSV values properly
+  const escapeCSV = (value: string | number) => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    
+    const stringValue = String(value);
+    // If value contains commas, quotes, or newlines, wrap in quotes and escape any quotes
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+  };
+  
+  // Handle export functionality for cash drawer transactions
+  const handleExportTransactions = () => {
+    try {
+      // Create CSV content
+      const headers = ["Date & Time", "Operation", "Amount", "Previous Balance", "New Balance", "Notes"];
+      
+      const rows = history.map(transaction => {
+        return [
+          financeService.formatDateTime(transaction.date),
+          financeService.getOperationDisplayName(transaction.operation),
+          transaction.amount.toFixed(2),
+          transaction.previousBalance.toFixed(2),
+          transaction.balance.toFixed(2),
+          transaction.notes || ""
+        ];
+      });
+      
+      // Add summary row at the end
+      rows.push([]); // Empty row
+      rows.push(["CASH DRAWER SUMMARY", "", "", "", "", ""]);
+      rows.push(["Current Balance:", financeService.formatCurrency(balance), "", "", "", ""]);
+      rows.push(["Transactions Count:", history.length.toString(), "", "", "", ""]);
+      rows.push(["Report Generated:", new Date().toLocaleString(), "", "", "", ""]);
+      
+      // Format with proper escaping
+      let csvContent = '';
+      
+      // Add headers row
+      csvContent += headers.map(header => escapeCSV(header)).join(',') + '\r\n';
+      
+      // Add data rows
+      rows.forEach(row => {
+        csvContent += row.map(value => escapeCSV(value)).join(',') + '\r\n';
+      });
+      
+      // Add BOM for better Excel compatibility with UTF-8
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `cash_drawer_transactions_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      setSuccess('Cash drawer transactions exported successfully');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error exporting transactions:', error);
+      setError('Failed to export transactions. Please try again.');
+      
+      // Clear error message after 3 seconds
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -255,7 +335,17 @@ export const FinancePage = withAuthProtection(() => {
       <div className="bg-card rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-card-foreground">Transaction History</h2>
-          <span className="text-muted-foreground text-sm">Last 50 transactions</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportTransactions}
+              className="inline-flex items-center px-3 py-2 border border-input rounded-md text-sm text-card-foreground hover:bg-muted"
+              disabled={history.length === 0}
+            >
+              <Download size={16} className="mr-1" />
+              Export
+            </button>
+            <span className="text-muted-foreground text-sm">Last 50 transactions</span>
+          </div>
         </div>
         
         {history.length === 0 ? (
