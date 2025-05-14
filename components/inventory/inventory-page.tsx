@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { ArrowUpDown, Box, Plus, Search, Trash2, AlertCircle, Edit, Package, FileDown, RefreshCw, DollarSign, TrendingUp, CheckCircle, Filter, XCircle, X, Eye } from "lucide-react"
+import { ArrowUpDown, Box, Plus, Search, Trash2, AlertCircle, Edit, Package, FileDown, RefreshCw, DollarSign, TrendingUp, CheckCircle, Filter, XCircle, X, Eye, FileUp } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -258,44 +258,70 @@ export function InventoryPage() {
 
   const handleExport = () => {
     // Create CSV content
-    const headers = ["Name", "SKU", "Category", "Subcategory", "Brand", "Supplier", "Stock", "Price", "Purchase Price", "Status", "Location", "Reorder Level"]
-    const csvRows = [headers]
+    const headers = ["Name", "SKU", "Category", "Subcategory", "Subcategory2", "Brand", "Supplier", "Stock", "Price", "Purchase Price", "Status", "Location", "Reorder Level"]
     
+    // Function to properly escape CSV values
+    const escapeCSV = (value: string) => {
+      if (value === null || value === undefined) return "";
+      const stringValue = String(value);
+      
+      // If the value contains quotes, commas, or newlines, it needs to be escaped
+      if (stringValue.includes('"') || stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('\r')) {
+        // Double up any quotes and wrap the whole thing in quotes
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+    
+    // Create rows with properly escaped data
+    const csvRows = [
+      // Convert headers to proper CSV format
+      headers.map(header => escapeCSV(header)).join(',')
+    ];
+    
+    // Add each inventory item as a row
     inventoryItems.forEach(item => {
-      csvRows.push([
-        item.name,
-        item.sku,
-        item.category,
-        item.subcategory ? item.subcategory : "",
-        item.subcategory2 ? item.subcategory2 : "",
-        item.brand || "",
-        getSupplierName(item.supplier),
-        item.stock.toString(),
-        item.price.toFixed(2),
-        item.purchasePrice ? item.purchasePrice.toFixed(2) : "",
-        item.status,
-        item.location || "",
-        item.reorderLevel.toString()
-      ])
-    })
+      const rowData = [
+        escapeCSV(item.name),
+        escapeCSV(item.sku),
+        escapeCSV(item.category),
+        escapeCSV(item.subcategory || ""),
+        escapeCSV(item.subcategory2 || ""),
+        escapeCSV(item.brand || ""),
+        escapeCSV(getSupplierName(item.supplier)),
+        escapeCSV(item.stock.toString()),
+        escapeCSV(item.price.toFixed(2)),
+        escapeCSV(item.purchasePrice ? item.purchasePrice.toFixed(2) : ""),
+        escapeCSV(item.status),
+        escapeCSV(item.location || ""),
+        escapeCSV(item.reorderLevel.toString())
+      ].join(',');
+      
+      csvRows.push(rowData);
+    });
     
-    const csvContent = csvRows.map(row => row.join(",")).join("\n")
+    // Join all rows with newlines to create the complete CSV content
+    const csvContent = csvRows.join("\r\n");
+    
+    // Add UTF-8 BOM for better Excel compatibility
+    const BOM = "\uFEFF";
+    const csvContentWithBOM = BOM + csvContent;
     
     // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
-    link.setAttribute("download", "inventory_export.csv")
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const blob = new Blob([csvContentWithBOM], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "inventory_export.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
     toast({
       title: "Export Complete",
       description: "Your inventory data has been exported to CSV.",
-    })
+    });
   }
 
   const handleDeleteItem = async () => {
@@ -484,6 +510,10 @@ export function InventoryPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Inventory Management</h2>
         <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={() => router.push('/inventory/bulk-upload')} className="shadow-sm transition-all hover:shadow">
+            <FileUp className="mr-2 h-4 w-4" />
+            Bulk Upload
+          </Button>
           <Button onClick={() => router.push('/inventory/add')} className="shadow-sm transition-all hover:shadow">
             <Plus className="mr-2 h-4 w-4" />
             Add Item

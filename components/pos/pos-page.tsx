@@ -81,7 +81,7 @@ type CompletedSale = {
   message: string
   saleDetails: {
     id: string
-    receiptNumber: number
+    receiptNumber: string
     items: CartItem[]
     total: number
     discount: number
@@ -343,7 +343,7 @@ export function POSPage() {
     }
   }
 
-  const completeSale = async (printAfterSale = false) => {
+  const completeSale = async (printAfterSale = true) => {
     if (cart.length === 0) {
       toast({
         title: "Empty Cart",
@@ -376,22 +376,15 @@ export function POSPage() {
       
       toast({
         title: "Sale Completed",
-        description: `Sale #${result.saleDetails.receiptNumber.toString().padStart(6, '0')} completed successfully.`,
+        description: `Sale ${result.saleDetails.receiptNumber} completed successfully.`,
       })
       
       // Refresh inventory data
       const inventoryData = await posService.getInventory()
       setInventoryItems(inventoryData)
 
-      // If printAfterSale is true, show print dialog
-      if (printAfterSale) {
-        setPrintingInProgress(true)
-        const receipt = prepareReceiptData(result)
-        setReceiptData(receipt)
-      } else {
-        // Show the print dialog
-        setShowPrintDialog(true)
-      }
+      // Always show the print dialog after completing a sale
+      setShowPrintDialog(true)
 
       // Reset cart and form
       setCart([])
@@ -589,7 +582,13 @@ export function POSPage() {
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="w-8 text-center">{item.quantity}</span>
+                        <Input
+                          type="number"
+                          value={item.quantity}
+                          min="1"
+                          onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                          className="w-12 mx-1 px-1 text-center h-7"
+                        />
                         <Button
                           variant="outline"
                           size="icon"
@@ -680,16 +679,7 @@ export function POSPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mt-4">
-            <Button 
-              variant="outline" 
-              className="w-full gap-1" 
-              onClick={printReceipt} 
-              disabled={printingInProgress || (cart.length === 0 && !currentSale)}
-            >
-              <Printer className="h-4 w-4" />
-              Print
-            </Button>
+          <div className="grid grid-cols-1 gap-2 mt-4">
             <Button
               variant="secondary"
               className="w-full gap-1"
@@ -712,7 +702,7 @@ export function POSPage() {
           <Button 
             variant="default" 
             className="w-full gap-1 mt-2 bg-green-600 hover:bg-green-700" 
-            onClick={() => completeSale(false)}
+            onClick={() => completeSale()}
             disabled={printingInProgress}
           >
             Complete Sale
@@ -727,7 +717,7 @@ export function POSPage() {
           <DialogHeader>
             <DialogTitle>Print Receipt</DialogTitle>
             <DialogDescription>
-              Sale #{currentSale?.saleDetails.receiptNumber.toString().padStart(6, '0')} has been completed successfully.
+              Sale {currentSale?.saleDetails.receiptNumber} has been completed successfully.
               Would you like to print a receipt?
             </DialogDescription>
           </DialogHeader>

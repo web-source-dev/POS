@@ -188,6 +188,44 @@ const reportService = {
         data: []
       };
     }
+  },
+
+  // Add a function to get a sale by receipt number
+  getSaleByReceiptNumber: async (receiptNumber) => {
+    try {
+      const response = await fetch(`/api/sales/receipt/${encodeURIComponent(receiptNumber)}`);
+      
+      if (!response.ok) {
+        // If the specific API endpoint is not available, fall back to the getSalesReport method
+        // and filter the results
+        const allSales = await getSalesReport({
+          startDate: new Date(0).toISOString().split('T')[0], // Beginning of time
+          endDate: new Date().toISOString().split('T')[0]     // Today
+        });
+        
+        if (allSales.success && Array.isArray(allSales.data)) {
+          // Find the sale with the matching receipt number
+          const sale = allSales.data.find(s => s.receiptNumber === receiptNumber);
+          if (sale) {
+            return {
+              success: true,
+              data: sale
+            };
+          }
+        }
+        
+        throw new Error('Sale not found');
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching sale by receipt number:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 };
 

@@ -42,6 +42,8 @@ interface SaleItem {
 interface SaleTransaction {
   date: string;
   total: number;
+  receiptNumber: string;
+  receiptNumberValue?: number;
   items: SaleItem[];
   customerName?: string;
   [key: string]: unknown;
@@ -81,120 +83,6 @@ export default function SalesDetailPage() {
     startDate: '',
     endDate: ''
   });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Get the date from the URL parameter
-        const idParam = params.id as string;
-        
-        // Determine date range based on the ID format
-        if (idParam) {
-          try {
-            // For normal date-based sale reports
-            const decodedDate = decodeURIComponent(idParam);
-            setDate(decodedDate);
-            
-            // Parse date and create a range
-            const saleDate = parseSaleDate(decodedDate);
-            if (saleDate) {
-              // Get date range for the specific period
-              const parsedDateRange = getDateRangeFromSaleDate(decodedDate, saleDate);
-              setDateRange(parsedDateRange);
-              
-              let salesData: SalesData | null = null;
-              let transactionsData: SaleTransaction[] = [];
-              
-              // Try to fetch sales report data
-              try {
-                // Fetch sales report for this date range with better error handling
-                const salesResponse = await reportService.getSalesReport(parsedDateRange) as ApiResponse;
-                
-                if (salesResponse && salesResponse.success) {
-                  // Process the response to ensure consistent data structure
-                  const processedData = Array.isArray(salesResponse.data) 
-                    ? (salesResponse.data as Record<string, unknown>[]).map(sale => ({
-                        ...sale,
-                        date: sale.date ? new Date(sale.date as string).toISOString() : new Date().toISOString(),
-                        total: parseFloat(sale.total as string) || 0,
-                        items: Array.isArray(sale.items) ? (sale.items as Record<string, unknown>[]).map((item) => ({
-                          ...item,
-                          itemId: item.itemId as string || `item-${Math.random().toString(36).substring(2, 9)}`,
-                          name: item.name as string || 'Unknown Product',
-                          price: parseFloat(item.price as string) || 0,
-                          quantity: parseInt(item.quantity as string) || 1
-                        })) : []
-                      }))
-                    : [];
-                  
-                  const summaryData = salesResponse.summary || {
-                    totalSales: '0',
-                    totalTransactions: 0,
-                    totalItems: 0,
-                    averageTransaction: '0'
-                  };
-                  
-                  salesData = {
-                    date: decodedDate,
-                    summary: {
-                      totalSales: parseFloat(summaryData.totalSales as string || '0').toFixed(2),
-                      totalTransactions: parseInt(summaryData.totalTransactions as unknown as string || '0'),
-                      totalItems: summaryData.totalItems as number || 0,
-                      averageTransaction: parseFloat(summaryData.averageTransaction as string || '0').toFixed(2)
-                    },
-                    data: processedData as SaleTransaction[]
-                  };
-                  
-                  transactionsData = processedData as SaleTransaction[];
-                  
-                  // Sort transactions by date (newest first)
-                  transactionsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                }
-              } catch (error) {
-                console.error('Error fetching sales report:', error);
-              }
-              
-              // If no data was received, use sample data
-              if (!salesData) {
-                const sampleData = generateSampleSalesData(parsedDateRange, decodedDate);
-                salesData = sampleData.salesData;
-                transactionsData = sampleData.transactions;
-              }
-              
-              setSalesData(salesData);
-              setTransactions(transactionsData);
-              
-              // Process products sold
-              const products = collectProductsSold(transactionsData);
-              setProductsSold(products);
-              
-              // Also get category distribution for this date range
-              try {
-                await fetchCategoryData(parsedDateRange);
-              } catch (error) {
-                console.error('Error fetching category data:', error);
-              }
-            } else {
-              throw new Error("Could not parse date from: " + decodedDate);
-            }
-          } catch (err) {
-            console.error('Error processing sale date:', err);
-            setError("Invalid date format in ID");
-          }
-        } else {
-          setError("Invalid sales ID");
-        }
-      } catch (err) {
-        console.error('Error fetching sales details:', err);
-        setError("Failed to load sales data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [params.id]);
 
   // Parse sale date from various formats
   const parseSaleDate = (dateStr: string): Date | null => {
@@ -305,6 +193,198 @@ export default function SalesDetailPage() {
       endDate: today.toISOString().split('T')[0]
     };
   };
+  
+  // Helper function to handle date-based report lookup
+  const handleDateBasedReport = async (idParam: string) => {
+    try {
+      // For normal date-based sale reports
+      const decodedDate = decodeURIComponent(idParam);
+      setDate(decodedDate);
+      
+      // Parse date and create a range
+      const saleDate = parseSaleDate(decodedDate);
+      if (saleDate) {
+        // Get date range for the specific period
+        const parsedDateRange = getDateRangeFromSaleDate(decodedDate, saleDate);
+        setDateRange(parsedDateRange);
+        
+        let salesData: SalesData | null = null;
+        let transactionsData: SaleTransaction[] = [];
+        
+        // Try to fetch sales report data
+        try {
+          // Fetch sales report for this date range with better error handling
+          const salesResponse = await reportService.getSalesReport(parsedDateRange) as ApiResponse;
+          
+          if (salesResponse && salesResponse.success) {
+            // Process the response to ensure consistent data structure
+            const processedData = Array.isArray(salesResponse.data) 
+              ? (salesResponse.data as Record<string, unknown>[]).map(sale => ({
+                  ...sale,
+                  date: sale.date ? new Date(sale.date as string).toISOString() : new Date().toISOString(),
+                  receiptNumber: sale.receiptNumber as string || `#${String(sale.receiptNumberValue as number || 0).padStart(6, '0')}`,
+                  total: parseFloat(sale.total as string) || 0,
+                  items: Array.isArray(sale.items) ? (sale.items as Record<string, unknown>[]).map((item) => ({
+                    ...item,
+                    itemId: item.itemId as string || `item-${Math.random().toString(36).substring(2, 9)}`,
+                    name: item.name as string || 'Unknown Product',
+                    price: parseFloat(item.price as string) || 0,
+                    quantity: parseInt(item.quantity as string) || 1
+                  })) : []
+                }))
+              : [];
+            
+            const summaryData = salesResponse.summary || {
+              totalSales: '0',
+              totalTransactions: 0,
+              totalItems: 0,
+              averageTransaction: '0'
+            };
+            
+            salesData = {
+              date: decodedDate,
+              summary: {
+                totalSales: parseFloat(summaryData.totalSales as string || '0').toFixed(2),
+                totalTransactions: parseInt(summaryData.totalTransactions as unknown as string || '0'),
+                totalItems: summaryData.totalItems as number || 0,
+                averageTransaction: parseFloat(summaryData.averageTransaction as string || '0').toFixed(2)
+              },
+              data: processedData as SaleTransaction[]
+            };
+            
+            transactionsData = processedData as SaleTransaction[];
+            
+            // Sort transactions by date (newest first)
+            transactionsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          }
+        } catch (error) {
+          console.error('Error fetching sales report:', error);
+        }
+        
+        // If no data was received, use sample data
+        if (!salesData) {
+          const sampleData = generateSampleSalesData(parsedDateRange, decodedDate);
+          salesData = sampleData.salesData;
+          transactionsData = sampleData.transactions;
+        }
+        
+        setSalesData(salesData);
+        setTransactions(transactionsData);
+        
+        // Process products sold
+        const products = collectProductsSold(transactionsData);
+        setProductsSold(products);
+        
+        // Also get category distribution for this date range
+        try {
+          await fetchCategoryData(parsedDateRange);
+        } catch (error) {
+          console.error('Error fetching category data:', error);
+        }
+      } else {
+        throw new Error("Could not parse date from: " + decodedDate);
+      }
+    } catch (err) {
+      console.error('Error processing sale date:', err);
+      setError("Invalid date format in ID");
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Get the date from the URL parameter
+        const idParam = params.id as string;
+        
+        // Determine if the ID is a receipt number or a date
+        if (idParam) {
+          // Check if the ID is a receipt number (typically starts with #)
+          const isReceiptNumber = idParam.startsWith('%23') || idParam.startsWith('#');
+          
+          if (isReceiptNumber) {
+            // Handle receipt number-based lookup
+            const decodedReceipt = decodeURIComponent(idParam);
+            
+            try {
+              // Use the new specialized function to fetch a specific sale by receipt number
+              const saleResponse = await reportService.getSaleByReceiptNumber(decodedReceipt);
+              
+              if (saleResponse.success && saleResponse.data) {
+                const sale = saleResponse.data;
+                
+                // Format the sale with proper types
+                const processedSale = {
+                  ...sale,
+                  date: sale.date ? new Date(sale.date).toISOString() : new Date().toISOString(),
+                  receiptNumber: sale.receiptNumber || `#${String(sale.receiptNumberValue || 0).padStart(6, '0')}`,
+                  total: parseFloat(sale.total) || 0,
+                  items: Array.isArray(sale.items) 
+                    ? sale.items.map(item => ({
+                        ...item,
+                        itemId: item.itemId || `item-${Math.random().toString(36).substring(2, 9)}`,
+                        name: item.name || 'Unknown Product',
+                        price: parseFloat(item.price) || 0, 
+                        quantity: parseInt(item.quantity) || 1
+                      }))
+                    : []
+                };
+                
+                // Found the specific sale with the receipt number
+                setDate(`Receipt ${decodedReceipt}`);
+                
+                // Create a date range for just this transaction's date
+                const transactionDate = new Date(processedSale.date);
+                const dateRange = {
+                  startDate: transactionDate.toISOString().split('T')[0],
+                  endDate: transactionDate.toISOString().split('T')[0]
+                };
+                
+                setDateRange(dateRange);
+                
+                // Use this single transaction as our data
+                const salesData: SalesData = {
+                  date: `Receipt ${decodedReceipt}`,
+                  summary: {
+                    totalSales: processedSale.total.toString(),
+                    totalTransactions: 1,
+                    totalItems: processedSale.items.reduce((sum, item) => sum + item.quantity, 0),
+                    averageTransaction: processedSale.total.toString()
+                  },
+                  data: [processedSale]
+                };
+                
+                setSalesData(salesData);
+                setTransactions([processedSale as SaleTransaction]);
+                
+                // Process products sold for this transaction
+                const products = collectProductsSold([processedSale as SaleTransaction]);
+                setProductsSold(products);
+              } else {
+                // If no exact match, use the decoded receipt as a date as fallback
+                handleDateBasedReport(idParam);
+              }
+            } catch (err) {
+              console.error('Error fetching transaction by receipt number:', err);
+              handleDateBasedReport(idParam);
+            }
+          } else {
+            // Handle date-based report
+            handleDateBasedReport(idParam);
+          }
+        } else {
+          setError("Invalid sales ID");
+        }
+      } catch (err) {
+        console.error('Error fetching sales details:', err);
+        setError("Failed to load sales data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [params.id]);
 
   // Collect all products sold during a period
   const collectProductsSold = (sales: SaleTransaction[]): ProductSummary[] => {
@@ -429,6 +509,8 @@ export default function SalesDetailPage() {
         transactions.push({
           date: transactionDate.toISOString(),
           total: transactionTotal,
+          receiptNumber: `#${String(Math.floor(Math.random() * 100000) + 1).padStart(6, '0')}`,
+          receiptNumberValue: Math.floor(Math.random() * 1000) + 1,
           items,
           customerName: Math.random() > 0.7 ? `Customer ${Math.floor(Math.random() * 100)}` : ''
         });
@@ -527,6 +609,21 @@ export default function SalesDetailPage() {
         </p>
       </div>
       
+      {/* Receipt Number Display for Single Transaction View */}
+      {transactions.length === 1 && transactions[0].receiptNumber && (
+        <Card className="mb-6 border-primary/20 bg-primary/5">
+          <CardContent className="flex items-center justify-between py-6">
+            <div>
+              <h2 className="text-xl font-semibold">Receipt Number</h2>
+              <p className="text-muted-foreground">Transaction details for a single receipt</p>
+            </div>
+            <div className="text-3xl font-bold text-primary">
+              {transactions[0].receiptNumber}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4 mb-6">
         <Card>
@@ -589,6 +686,13 @@ export default function SalesDetailPage() {
                 data={transactions} 
                 columns={[
                   { 
+                    header: 'Receipt #', 
+                    accessorKey: 'receiptNumber',
+                    cell: (value: unknown) => (
+                      <span className="font-medium text-primary">{value as string}</span>
+                    )
+                  },
+                  { 
                     header: 'Date', 
                     accessorKey: 'date', 
                     cell: (value: unknown) => formatDate(value as string)
@@ -629,12 +733,20 @@ export default function SalesDetailPage() {
                 <DataTable 
                   data={transactions.flatMap(transaction => 
                     transaction.items.map((item) => ({
+                      receiptNumber: transaction.receiptNumber,
                       transactionDate: formatDate(transaction.date),
                       ...item,
                       total: item.price * item.quantity
                     }))
                   )}
                   columns={[
+                    { 
+                      header: 'Receipt #', 
+                      accessorKey: 'receiptNumber',
+                      cell: (value: unknown) => (
+                        <span className="font-medium text-primary">{value as string}</span>
+                      )
+                    },
                     { header: 'Transaction', accessorKey: 'transactionDate' },
                     { header: 'Product', accessorKey: 'name' },
                     { header: 'SKU', accessorKey: 'sku' },

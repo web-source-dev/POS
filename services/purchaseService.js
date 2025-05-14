@@ -67,18 +67,42 @@ const purchaseService = {
    */
   exportPurchasesToCsv: (purchases) => {
     try {
-      // Define CSV headers
-      const headers = ['Order ID', 'Customer', 'Date', 'Items', 'Total', 'Status'];
+      // Define enhanced CSV headers
+      const headers = [
+        'Receipt Number',
+        'Order ID', 
+        'Customer', 
+        'Date', 
+        'Time',
+        'Items Count', 
+        'Total Quantity',
+        'Subtotal',
+        'Discount',
+        'Total', 
+        'Cash Amount',
+        'Change',
+        'Payment Status'
+      ];
       
-      // Map purchase data to CSV rows
-      const rows = purchases.map(purchase => [
-        purchase._id,
-        purchase.customerName || 'Anonymous',
-        new Date(purchase.date).toLocaleString(),
-        purchase.items.length.toString(),
-        purchase.total.toFixed(2),
-        'Completed'
-      ]);
+      // Map purchase data to CSV rows with more detail
+      const rows = purchases.map(purchase => {
+        const purchaseDate = new Date(purchase.date);
+        return [
+          purchase.receiptNumber || `#${purchase._id.slice(-6).padStart(6, '0')}`,
+          purchase._id,
+          purchase.customerName || 'Anonymous',
+          purchaseDate.toLocaleDateString(),
+          purchaseDate.toLocaleTimeString(),
+          purchase.items.length.toString(),
+          purchase.items.reduce((sum, item) => sum + item.quantity, 0).toString(),
+          purchase.subtotal.toFixed(2),
+          purchase.discount.toFixed(2),
+          purchase.total.toFixed(2),
+          purchase.cashAmount ? purchase.cashAmount.toFixed(2) : purchase.total.toFixed(2),
+          purchase.change ? purchase.change.toFixed(2) : '0.00',
+          'Completed'
+        ];
+      });
       
       // Combine headers and rows
       return [

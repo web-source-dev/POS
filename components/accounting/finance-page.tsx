@@ -295,6 +295,7 @@ export const FinancePage = withAuthProtection(() => {
                         {financeService.getOperationDisplayName(transaction.operation)}
                       </span>
                     </td>
+                   
                     <td className="py-3 px-6 text-right">
                       <span className={`font-semibold ${
                         transaction.operation === 'add' || transaction.operation === 'sale' ? 'text-primary' :

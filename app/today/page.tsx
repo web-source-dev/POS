@@ -40,7 +40,7 @@ interface SaleItem {
 
 interface Sale {
   _id: string;
-  receiptNumber: number;
+  receiptNumber: string;
   items: SaleItem[];
   subtotal: number;
   discount: number;
@@ -303,7 +303,7 @@ function TodayPage() {
           <h1 className="text-3xl font-bold tracking-tight">Today&apos;s Summary</h1>
           <Button onClick={handleExportData} className="flex items-center gap-2">
             <Download className="h-4 w-4" />
-            Export Data
+            Export Receipts
           </Button>
         </div>
         
@@ -455,7 +455,7 @@ function TodayPage() {
                               {new Date(sale.date).toLocaleTimeString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              #{sale.receiptNumber}
+                              {sale.receiptNumber}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {sale.items.length} ({sale.items.reduce((sum: number, item: SaleItem) => sum + item.quantity, 0)} units)

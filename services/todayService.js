@@ -19,44 +19,58 @@ const todayService = {
 
   /**
    * Download today's data as CSV
-   * This triggers a file download
+   * This triggers a file download with receipt information
    */
-  exportTodayData: () => {
-    // Get token from localStorage
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-    
-    // Create and click a temporary download link
-    const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/today/export`;
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.setAttribute('download', `today-report-${new Date().toISOString().split('T')[0]}.csv`);
-    
-    // Set Authorization header
-    link.setAttribute('data-auth', `Bearer ${token}`);
-    
-    // Programmatically fetch with authorization
-    fetch(downloadUrl, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+  exportTodayData: async () => {
+    try {
+      // Get token from localStorage
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      
+      if (!token) {
+        throw new Error('Authentication required');
       }
-    })
-    .then(response => response.blob())
-    .then(blob => {
+      
+      const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/today/export`;
+      
+      // Use fetch with proper headers
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Export error details:', errorText);
+        throw new Error(`Export failed with status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
+      
+      // Format date for filename: YYYY-MM-DD
+      const today = new Date();
+      const dateString = today.toISOString().split('T')[0];
+      
+      // Create and use a download link with improved filename
+      const link = document.createElement('a');
       link.href = url;
+      link.setAttribute('download', `receipt-export-${dateString}.csv`);
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    })
-    .catch(error => {
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      return true;
+    } catch (error) {
       console.error('Error downloading file:', error);
       throw error;
-    });
+    }
   }
 };
 

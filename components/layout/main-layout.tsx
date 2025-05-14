@@ -65,7 +65,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     },
     {
       href: "/purchases",
-      label: "Purchases",
+      label: "Sales",
       icon: ClipboardList,
       active: pathname === "/purchases",
     },

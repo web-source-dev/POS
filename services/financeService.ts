@@ -12,7 +12,7 @@ export interface CashDrawerTransaction {
   reference: string | null;
   notes: string;
   saleDetails?: {
-    receiptNumber: number;
+    receiptNumber: string;
     items: Array<{
       itemId: string;
       name: string;
@@ -275,5 +275,15 @@ export const financeService = {
     };
     
     return statusMap[status] || { name: status, colorClass: 'bg-gray-100 text-gray-800' };
+  },
+
+  /**
+   * Format receipt number
+   * @param {string} id - ID string to format as receipt number
+   * @param {string} receiptNum - Optional existing receipt number
+   */
+  formatReceiptNumber: (id: string, receiptNum?: string): string => {
+    if (receiptNum) return receiptNum;
+    return `#${id.slice(-6).padStart(6, '0')}`;
   }
 }; 

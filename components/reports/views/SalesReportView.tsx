@@ -1,6 +1,6 @@
 "use client";
 
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState, ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SalesChart from '../charts/SalesChart';
@@ -30,6 +30,8 @@ interface ApiResponse {
 interface SalesDataRecord {
   date: string;
   total: number;
+  receiptNumber: string;
+  receiptNumberValue: number;
   items: Array<{ quantity: number; [key: string]: unknown }>;
   [key: string]: unknown;
 }
@@ -48,6 +50,7 @@ interface SalesDataItem {
   items?: number;
   avgTransaction?: number;
   time?: string;
+  receiptNumber?: string;
   [key: string]: unknown;
 }
 
@@ -103,7 +106,8 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
                 time: date.toTimeString().split(' ')[0].substring(0, 5),
                 sales: sale.total,
                 transactions: 1, // Each sale is one transaction
-                items: sale.items.reduce((sum, item) => sum + item.quantity, 0)
+                items: sale.items.reduce((sum, item) => sum + item.quantity, 0),
+                receiptNumber: sale.receiptNumber || `#${String(sale.receiptNumberValue || 0).padStart(6, '0')}`
               };
             });
             
@@ -311,6 +315,15 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
   // Daily sales columns with time
   const dailyDetailColumns = [
     {
+      header: 'Receipt #',
+      accessorKey: 'receiptNumber',
+      cell: (value: unknown) => (
+        <span className="font-medium px-2 py-1 bg-primary/10 text-primary rounded-full">
+          {value as string}
+        </span>
+      ),
+    },
+    {
       header: 'Date',
       accessorKey: 'date',
       cell: (value: unknown) => formatDate(value as string)
@@ -334,9 +347,10 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
 
   // Add a function to handle row clicks
   const handleSaleRowClick = (sale: Record<string, unknown>) => {
-    // For sales data, we'll use the date as part of the ID since we don't have a specific ID
-    // In a real app, you'd use the actual sale ID from the database
-    if (sale && sale.date) {
+    // For sales data, we'll use the receipt number if available, otherwise fallback to date
+    if (sale && sale.receiptNumber) {
+      router.push(`/reports/sales/${encodeURIComponent(sale.receiptNumber as string)}`);
+    } else if (sale && sale.date) {
       router.push(`/reports/sales/${encodeURIComponent(sale.date as string)}`);
     }
   };
@@ -468,6 +482,7 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
                     time: date.toTimeString().split(' ')[0].substring(0, 5),
                     sales: sale.total,
                     items: sale.items.reduce((sum, item) => sum + item.quantity, 0),
+                    receiptNumber: sale.receiptNumber || `#${String(sale.receiptNumberValue || 0).padStart(6, '0')}`,
                     originalData: sale // Store the original data for the detail view
                   };
                 }) : []
@@ -476,6 +491,7 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
               title="Transaction Log"
               description="Detailed list of all transactions"
               pageSize={5}
+              onRowClick={handleSaleRowClick}
             />
           </CardContent>
         </Card>

@@ -13,7 +13,7 @@ export type ReceiptItem = {
 
 export type ReceiptData = {
   id: string
-  receiptNumber: number
+  receiptNumber: string
   items: ReceiptItem[]
   subtotal: number
   discount: number
@@ -56,11 +56,6 @@ export function ReceiptPrinter({ receiptData, settings, onPrintComplete }: Recei
     const formatCurrency = (amount: number) => {
       return `Rs ${amount.toFixed(2)}`
     }
-
-    // Pad receipt number with leading zeros - moved inside useEffect
-    const formatReceiptNumber = (num: number) => {
-      return `#${String(num).padStart(6, '0')}`
-    }
     
     const iframe = printFrameRef.current
     if (iframe && iframe.contentWindow) {
@@ -71,7 +66,7 @@ export function ReceiptPrinter({ receiptData, settings, onPrintComplete }: Recei
         const logoUrl = `${process.env.NEXT_PUBLIC_API_Image_URL}${pos.logo || ''}`
         console.log(logoUrl)
         const formattedDate = new Date(receiptData.date).toLocaleString()
-        const receiptNumber = formatReceiptNumber(receiptData.receiptNumber)
+        const receiptNumber = receiptData.receiptNumber
 
         // Enhanced logging for debugging the receipt items
         console.log("Receipt items count:", receiptData.items.length)

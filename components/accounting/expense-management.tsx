@@ -412,7 +412,7 @@ export const ExpenseManagement = withAuthProtection(() => {
                       <td className="py-3 px-6 text-left font-mono text-xs">
                         <span 
                           onClick={() => handleViewExpense(expense._id)} 
-                          className="cursor-pointer text-primary hover:underline"
+                          className="cursor-pointer text-primary hover:underline bg-primary/10 px-2 py-1 rounded"
                         >
                           {expense.expenseId}
                         </span>

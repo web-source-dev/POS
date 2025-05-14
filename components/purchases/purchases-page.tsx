@@ -42,6 +42,7 @@ interface PurchaseOrder {
   total: number
   customerName: string
   date: string
+  receiptNumber?: string
 }
 
 // Component for purchase orders
@@ -204,6 +205,12 @@ function PurchasesPageContent() {
     router.push(`/purchases/${purchaseId}`)
   }
 
+  // Add formatReceiptNumber function
+  const formatReceiptNumber = (id: string, receiptNum?: string) => {
+    if (receiptNum) return receiptNum;
+    return `#${id.slice(-6).padStart(6, '0')}`;
+  }
+
   // Format date
   const formatDate = (dateString: string) => {
     try {
@@ -234,13 +241,15 @@ function PurchasesPageContent() {
   const handleExport = () => {
     try {
       // Create CSV content
-      const headers = ["Order ID", "Customer", "Date", "Items", "Total"]
+      const headers = ["Receipt Number", "Order ID", "Customer", "Date", "Items", "Total", "Payment Method"]
       const rows = filteredPurchases.map(purchase => [
+        purchase.receiptNumber || formatReceiptNumber(purchase._id),
         purchase._id,
-        purchase.customerName || "Anonymous",
+        purchase.customerName || "Walk-in Customer",
         formatDate(purchase.date),
         purchase.items.length.toString(),
-        purchase.total.toFixed(2)
+        purchase.total.toFixed(2),
+        "Cash"
       ])
       
       const csvContent = [
@@ -253,7 +262,7 @@ function PurchasesPageContent() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.setAttribute("href", url)
-      link.setAttribute("download", `purchase_orders_${format(new Date(), "yyyy-MM-dd")}.csv`)
+      link.setAttribute("download", `sales_${format(new Date(), "yyyy-MM-dd")}.csv`)
       link.style.visibility = "hidden"
       document.body.appendChild(link)
       link.click()
@@ -261,7 +270,7 @@ function PurchasesPageContent() {
       
       toast({
         title: "Export successful",
-        description: "Your purchase orders have been exported as CSV."
+        description: "Your sales data has been exported as CSV."
       })
     } catch (error) {
       console.error("Error exporting purchases:", error)
@@ -296,7 +305,7 @@ function PurchasesPageContent() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Purchase Orders</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Sales</h2>
           <p className="text-muted-foreground">View and manage your sales transactions</p>
         </div>
         
@@ -353,7 +362,7 @@ function PurchasesPageContent() {
           <CardContent>
             <div className="text-2xl font-bold">Rs {statsSummary.totalRevenue.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              From all purchase orders
+              From all sales
             </p>
           </CardContent>
         </Card>
@@ -532,9 +541,9 @@ function PurchasesPageContent() {
         <TabsContent value="all-orders" className="m-0">
           <Card>
             <CardHeader className="p-4">
-              <CardTitle>All Purchase Orders</CardTitle>
+              <CardTitle>All Sales</CardTitle>
               <CardDescription>
-                Showing {filteredPurchases.length} of {purchases.length} purchase orders
+                Showing {filteredPurchases.length} of {purchases.length} sales
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -549,7 +558,7 @@ function PurchasesPageContent() {
               ) : filteredPurchases.length === 0 ? (
                 <div className="flex flex-col justify-center items-center p-8 text-center">
                   <AlertTriangle className="h-10 w-10 text-muted-foreground mb-4" />
-                  <h3 className="font-medium text-lg">No purchase orders found</h3>
+                  <h3 className="font-medium text-lg">No sales found</h3>
                   <p className="text-muted-foreground mt-1 max-w-md">
                     Try changing your search terms or filters to find what you&apos;re looking for.
                   </p>
@@ -569,8 +578,15 @@ function PurchasesPageContent() {
                           className="flex items-center space-x-1 cursor-pointer"
                           onClick={() => toggleSort("date")}
                         >
-                          <span>Order #</span>
+                          <span>Date</span>
                           <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div 
+                          className="flex items-center space-x-1 cursor-pointer"
+                        >
+                          <span>Receipt #</span>
                         </div>
                       </TableHead>
                       <TableHead>
@@ -582,7 +598,6 @@ function PurchasesPageContent() {
                           <ArrowUpDown className="h-3 w-3" />
                         </div>
                       </TableHead>
-                      <TableHead>Date</TableHead>
                       <TableHead>Time</TableHead>
                       <TableHead className="text-right">
                         <div 
@@ -610,20 +625,22 @@ function PurchasesPageContent() {
                       const purchaseDate = new Date(purchase.date)
                       return (
                         <TableRow key={purchase._id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewPurchase(purchase._id)}>
-                          <TableCell className="font-medium">
+                          <TableCell>
                             <div className="flex flex-col">
-                              <span>{purchase._id.substring(0, 8)}</span>
+                              <span>{format(purchaseDate, "MMM d, yyyy")}</span>
                               <span className="text-xs text-muted-foreground mt-1">
                                 {getTimeBadge(purchase.date)}
                               </span>
                             </div>
                           </TableCell>
+                          <TableCell className="font-medium">
+                            {purchase.receiptNumber || formatReceiptNumber(purchase._id)}
+                          </TableCell>
                           <TableCell>
                             <div className="max-w-[200px] truncate">
-                              {purchase.customerName || "Anonymous"}
+                              {purchase.customerName || "Walk-in Customer"}
                             </div>
                           </TableCell>
-                          <TableCell>{format(purchaseDate, "MMM d, yyyy")}</TableCell>
                           <TableCell>{format(purchaseDate, "h:mm a")}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex flex-col items-end">
@@ -674,16 +691,16 @@ function PurchasesPageContent() {
                   <AlertTriangle className="h-10 w-10 text-muted-foreground mb-4" />
                   <h3 className="font-medium text-lg">No recent orders found</h3>
                   <p className="text-muted-foreground mt-1">
-                    There are no purchase orders within the last 7 days.
+                    There are no sales within the last 7 days.
                   </p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order #</TableHead>
-                      <TableHead>Customer</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Receipt #</TableHead>
+                      <TableHead>Customer</TableHead>
                       <TableHead>Time</TableHead>
                       <TableHead className="text-right">Items</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -695,9 +712,9 @@ function PurchasesPageContent() {
                       const purchaseDate = new Date(purchase.date)
                       return (
                         <TableRow key={purchase._id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewPurchase(purchase._id)}>
-                          <TableCell className="font-medium">{purchase._id.substring(0, 8)}</TableCell>
-                          <TableCell>{purchase.customerName || "Anonymous"}</TableCell>
                           <TableCell>{format(purchaseDate, "MMM d, yyyy")}</TableCell>
+                          <TableCell className="font-medium">{purchase.receiptNumber || formatReceiptNumber(purchase._id)}</TableCell>
+                          <TableCell>{purchase.customerName || "Walk-in Customer"}</TableCell>
                           <TableCell>{format(purchaseDate, "h:mm a")}</TableCell>
                           <TableCell className="text-right">{purchase.items.length}</TableCell>
                           <TableCell className="text-right font-medium">Rs {purchase.total.toFixed(2)}</TableCell>
@@ -741,16 +758,16 @@ function PurchasesPageContent() {
                   <AlertTriangle className="h-10 w-10 text-muted-foreground mb-4" />
                   <h3 className="font-medium text-lg">No history found</h3>
                   <p className="text-muted-foreground mt-1">
-                    There are no purchase orders older than 7 days.
+                    There are no sales older than 7 days.
                   </p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Order #</TableHead>
-                      <TableHead>Customer</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Receipt #</TableHead>
+                      <TableHead>Customer</TableHead>
                       <TableHead>Time</TableHead>
                       <TableHead className="text-right">Items</TableHead>
                       <TableHead className="text-right">Total</TableHead>
@@ -762,9 +779,9 @@ function PurchasesPageContent() {
                       const purchaseDate = new Date(purchase.date)
                       return (
                         <TableRow key={purchase._id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewPurchase(purchase._id)}>
-                          <TableCell className="font-medium">{purchase._id.substring(0, 8)}</TableCell>
-                          <TableCell>{purchase.customerName || "Anonymous"}</TableCell>
                           <TableCell>{format(purchaseDate, "MMM d, yyyy")}</TableCell>
+                          <TableCell className="font-medium">{purchase.receiptNumber || formatReceiptNumber(purchase._id)}</TableCell>
+                          <TableCell>{purchase.customerName || "Walk-in Customer"}</TableCell>
                           <TableCell>{format(purchaseDate, "h:mm a")}</TableCell>
                           <TableCell className="text-right">{purchase.items.length}</TableCell>
                           <TableCell className="text-right font-medium">Rs {purchase.total.toFixed(2)}</TableCell>

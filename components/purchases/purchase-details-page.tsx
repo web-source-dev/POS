@@ -31,6 +31,7 @@ interface PurchaseOrder {
     quantity: number
     price: number
   }>
+  receiptNumber: string
   subtotal: number
   discount: number
   total: number
@@ -82,12 +83,12 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
           console.error("Error loading business settings:", settingsError)
         }
       } catch (error) {
-        console.error("Error loading purchase details:", error)
-        setError("Failed to load purchase details. Please try again.")
+        console.error("Error loading sale details:", error)
+        setError("Failed to load sale details. Please try again.")
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to load purchase details. Please try again."
+            description: "Failed to load sale details. Please try again."
         })
       } finally {
         setLoading(false)
@@ -110,8 +111,9 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
   }
 
   // Format receipt number with leading zeros
-  const formatReceiptNumber = (id: string) => {
-    return `#${id.slice(-6).padStart(6, '0')}`
+  const formatReceiptNumber = (id: string, receiptNum?: string) => {
+    if (receiptNum) return receiptNum;
+    return `#${id.slice(-6).padStart(6, '0')}`;
   }
 
   // Format currency
@@ -128,7 +130,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
         ? `${process.env.NEXT_PUBLIC_API_Image_URL}${businessSettings.pos.logo}`
         : ''
       
-      const receiptNumber = formatReceiptNumber(purchase._id)
+      const receiptNumber = purchase.receiptNumber || formatReceiptNumber(purchase._id)
       const formattedDate = formatDate(purchase.date)
 
       // Ensure items are properly processed
@@ -174,7 +176,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
         <html>
         <head>
           <meta charset="utf-8">
-          <title>Purchase Receipt ${receiptNumber}</title>
+          <title>Sale Receipt ${receiptNumber}</title>
           <style>
             /* Reset */
             * {
@@ -430,7 +432,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
                 ${businessSettings?.pos?.receiptHeader ? `<div class="custom-header">${businessSettings.pos.receiptHeader}</div>` : ''}
               </div>
               
-              <div class="receipt-title">PURCHASE RECEIPT</div>
+              <div class="receipt-title">SALE RECEIPT - ${receiptNumber}</div>
               
               <div class="receipt-info">
                 <div class="info-row">
@@ -517,7 +519,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
                 ${businessSettings?.pos?.receiptHeader ? `<div class="custom-header">${businessSettings.pos.receiptHeader}</div>` : ''}
               </div>
               
-              <div class="receipt-title">PURCHASE RECEIPT</div>
+              <div class="receipt-title">SALE RECEIPT - ${receiptNumber}</div>
               
               <div class="receipt-info">
                 <div class="info-row">
@@ -607,14 +609,15 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
     }
   }
 
-  // Handle export functionality
+  // Update handleExport function to avoid redeclaration of variables
   const handleExport = () => {
     if (!purchase) return
 
     try {
-      // Create CSV content
-      const headers = ["Item Name", "SKU", "Quantity", "Unit Price", "Total"]
-      const rows = purchase.items.map(item => [
+      // Create CSV content with detailed item information
+      const csvHeaders = ["Receipt Number", "Item Name", "SKU", "Quantity", "Unit Price", "Total"]
+      const csvRows = purchase.items.map(item => [
+        purchase.receiptNumber || formatReceiptNumber(purchase._id),
         item.name,
         item.sku || 'N/A',
         item.quantity.toString(),
@@ -623,8 +626,8 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
       ])
       
       const csvContent = [
-        headers.join(","),
-        ...rows.map(row => row.join(","))
+        csvHeaders.join(","),
+        ...csvRows.map(row => row.join(","))
       ].join("\n")
       
       // Create a blob and download link
@@ -632,7 +635,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
       const url = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.setAttribute("href", url)
-      link.setAttribute("download", `purchase_order_${purchase._id}_${format(new Date(), "yyyy-MM-dd")}.csv`)
+      link.setAttribute("download", `sale_${purchase.receiptNumber || purchase._id}_${format(new Date(), "yyyy-MM-dd")}.csv`)
       link.style.visibility = "hidden"
       document.body.appendChild(link)
       link.click()
@@ -643,7 +646,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
         description: "Order details have been exported as CSV."
       })
     } catch (error) {
-      console.error("Error exporting purchase:", error)
+      console.error("Error exporting sale:", error)
       toast({
         variant: "destructive",
         title: "Export failed",
@@ -700,7 +703,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
           <CardHeader className="pb-2">
             <CardTitle className="text-xl flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Error Loading Purchase Details
+              Error Loading Sale Details
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -735,15 +738,15 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
         
         <Card className="mt-6">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xl">Purchase Not Found</CardTitle>
+            <CardTitle className="text-xl">Sale Not Found</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>The purchase order you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.</p>
+            <p>The sale you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.</p>
             <Button 
               className="mt-4" 
               onClick={() => router.push('/purchases')}
             >
-              Return to Purchases
+              Return to Sales
             </Button>
           </CardContent>
         </Card>
@@ -773,10 +776,10 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-            <h2 className="text-3xl font-bold tracking-tight">Purchase Order Details</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Sale Details</h2>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className="text-xs px-2 py-1">Order #{purchase._id}</Badge>
+            <Badge className="text-xs px-2 py-1">Receipt {purchase.receiptNumber || formatReceiptNumber(purchase._id)}</Badge>
             <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-500 dark:hover:bg-green-900/30">
               Completed
             </Badge>
@@ -813,6 +816,13 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <div className="flex justify-between w-full">
+                  <span className="text-sm font-medium">Receipt:</span>
+                  <span className="text-sm">{purchase.receiptNumber || formatReceiptNumber(purchase._id)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <div className="flex justify-between w-full">
                   <span className="text-sm font-medium">Date:</span>
@@ -823,7 +833,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
                 <User className="h-4 w-4 text-muted-foreground" />
                 <div className="flex justify-between w-full">
                   <span className="text-sm font-medium">Customer:</span>
-                  <span className="text-sm">{purchase.customerName || "Anonymous"}</span>
+                  <span className="text-sm">{purchase.customerName || "Walk-in Customer"}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -910,7 +920,10 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Order Total</span>
+              <div className="flex flex-col">
+                <span className="font-semibold">Order Total</span>
+                <span className="text-xs text-muted-foreground">Receipt {purchase.receiptNumber || formatReceiptNumber(purchase._id)}</span>
+              </div>
             </div>
             <div className="text-2xl font-bold">Rs {purchase.total.toFixed(2)}</div>
           </div>
@@ -1005,7 +1018,7 @@ function PurchaseDetailsPageContent({ id }: { id: string }) {
           className="gap-1"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Purchases
+          Back to Sales
         </Button>
         <div className="flex gap-2">
           <Button 

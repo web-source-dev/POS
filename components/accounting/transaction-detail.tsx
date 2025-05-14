@@ -20,7 +20,8 @@ import {
   CircleCheck,
   Wallet,
   BarChart4,
-  Info
+  Info,
+  FileText
 } from 'lucide-react';
 
 export const TransactionDetailPage = withAuthProtection(() => {
@@ -186,9 +187,9 @@ export const TransactionDetailPage = withAuthProtection(() => {
                 <h1 className="text-3xl font-bold text-foreground">
                   {transactionColors.opName}
                 </h1>
-                {isSaleWithDetails && (
-                  <span className="ml-3 px-3 py-1 bg-muted rounded-full text-sm font-medium">
-                    Receipt #{transaction.saleDetails?.receiptNumber || ''}
+                {isSaleWithDetails && transaction.saleDetails?.receiptNumber && (
+                  <span className="ml-3 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                    {financeService.formatReceiptNumber(transaction._id, transaction.saleDetails.receiptNumber)}
                   </span>
                 )}
               </div>
@@ -327,6 +328,18 @@ export const TransactionDetailPage = withAuthProtection(() => {
               </div>
               
               <div className="p-5 space-y-4">
+                {transaction.saleDetails?.receiptNumber && (
+                  <div className="flex justify-between items-center pb-3 border-b border-border">
+                    <div className="flex items-center">
+                      <FileText size={16} className="mr-2 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Receipt Number</span>
+                    </div>
+                    <span className="font-medium">
+                      {financeService.formatReceiptNumber(transaction._id, transaction.saleDetails.receiptNumber)}
+                    </span>
+                  </div>
+                )}
+                
                 {transaction.saleDetails?.customerName && (
                   <div className="flex justify-between items-center pb-3 border-b border-border">
                     <div className="flex items-center">
@@ -370,9 +383,16 @@ export const TransactionDetailPage = withAuthProtection(() => {
           {isSaleWithDetails && transaction.saleDetails?.items && transaction.saleDetails.items.length > 0 && (
             <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
               <div className="px-5 py-4 border-b border-border bg-muted/30">
-                <h2 className="text-lg font-semibold text-card-foreground flex items-center">
-                  <Package size={18} className="mr-2 text-muted-foreground" />
-                  Purchased Items
+                <h2 className="text-lg font-semibold text-card-foreground flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Package size={18} className="mr-2 text-muted-foreground" />
+                    Purchased Items
+                  </div>
+                  {transaction.saleDetails?.receiptNumber && (
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                      {financeService.formatReceiptNumber(transaction._id, transaction.saleDetails.receiptNumber)}
+                    </span>
+                  )}
                 </h2>
               </div>
               

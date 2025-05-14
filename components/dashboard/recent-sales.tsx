@@ -81,7 +81,7 @@ export function RecentSales({ sales }: RecentSalesProps) {
           <TableBody>
             {sales.map((sale) => (
               <TableRow key={sale._id} onClick={() => handleNavigate(sale._id)}>
-                <TableCell className="font-medium">#{sale.receiptNumber}</TableCell>
+                <TableCell className="font-medium">{sale.receiptNumber}</TableCell>
                 <TableCell>{formatDate(new Date(sale.date))}</TableCell>
                 <TableCell>
                   {sale.customerName ? sale.customerName : 'Walk-in Customer'}

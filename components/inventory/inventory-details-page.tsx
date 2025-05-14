@@ -56,6 +56,7 @@ interface SaleRecord {
   quantity: number
   price: number
   total: number
+  receiptNumber?: string
 }
 
 interface InventoryDetailsPageProps {
@@ -151,6 +152,7 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
         
         mockData.push({
           _id: `sale-${i}`,
+          receiptNumber: `#${String(100000 + i).padStart(6, '0')}`,
           date: date.toISOString(),
           customerName: customerNames[Math.floor(Math.random() * customerNames.length)],
           quantity,
@@ -188,11 +190,12 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
     if (!filteredSalesData.length) return
     
     // Generate CSV
-    const headers = ["Date", "Customer", "Quantity", "Price", "Total"]
+    const headers = ["Receipt Number", "Date", "Customer", "Quantity", "Price", "Total"]
     const csvRows = [headers]
     
     filteredSalesData.forEach(sale => {
       csvRows.push([
+        sale.receiptNumber || "N/A",
         format(new Date(sale.date), "yyyy-MM-dd HH:mm"),
         sale.customerName,
         sale.quantity.toString(),
@@ -218,6 +221,10 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
       title: "Export Complete",
       description: "Sales data has been exported to CSV.",
     })
+  }
+
+  const handleClick = (id: string) =>{
+    window.location.href = `/purchases/${id}`
   }
 
   // Status badge styling
@@ -579,6 +586,7 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
               <Table>
                 <TableHeader className="sticky top-0 bg-white dark:bg-background">
                   <TableRow>
+                    <TableHead>Receipt</TableHead>
                     <TableHead className="w-[180px]">Date</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
@@ -588,7 +596,12 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
                 </TableHeader>
                 <TableBody>
                   {filteredSalesData.map((sale) => (
-                    <TableRow key={sale._id}>
+                    <TableRow key={sale._id} onClick={()=> handleClick(sale._id)} className="cursor-pointer">
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono">
+                          {sale.receiptNumber || "N/A"}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="font-medium">
                         {format(new Date(sale.date), "PPP")}
                         <div className="text-xs text-muted-foreground">
