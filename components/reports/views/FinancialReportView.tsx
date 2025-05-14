@@ -251,28 +251,12 @@ const FinancialReportView: FC<FinancialReportViewProps> = ({ dateRange }) => {
     }
   ];
 
-  // Route handlers for row clicks
-  const handleFinancialRowClick = (item: FinancialDataItem) => {
-    if (item && item.period) {
-      // Create a synthetic ID for financial records
-      const financialId = `financial-${encodeURIComponent(item.period)}`;
-      router.push(`/reports/financial/${financialId}`);
-    }
-  };
   
   const handleExpenseRowClick = (expense: ExpenseCategory) => {
     if (expense && expense.category) {
       // For expense categories, create a synthetic ID
       const expenseId = `expense-${encodeURIComponent(expense.category)}`;
       router.push(`/reports/expenses/${expenseId}`);
-    }
-  };
-  
-  const handleExpenseDetailsRowClick = (expense: { month: string }) => {
-    if (expense && expense.month) {
-      // For monthly expense details
-      const monthlyExpenseId = `monthly-expense-${encodeURIComponent(expense.month)}`;
-      router.push(`/reports/expenses/monthly/${monthlyExpenseId}`);
     }
   };
 

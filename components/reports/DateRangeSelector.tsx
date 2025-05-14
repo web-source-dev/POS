@@ -81,7 +81,7 @@ const DateRangeSelector: FC<DateRangeSelectorProps> = ({
       });
       isInitialized.current = true;
     }
-  }, []);
+  }, [onDateRangeChange, selectedRange]);
 
   return (
     <div className={cn("flex items-center space-x-2", className)}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import reportService from '@/services/reportService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -195,7 +195,7 @@ export default function SalesDetailPage() {
   };
   
   // Helper function to handle date-based report lookup
-  const handleDateBasedReport = async (idParam: string) => {
+  const handleDateBasedReport = useCallback(async (idParam: string) => {
     try {
       // For normal date-based sale reports
       const decodedDate = decodeURIComponent(idParam);
@@ -224,7 +224,7 @@ export default function SalesDetailPage() {
                   date: sale.date ? new Date(sale.date as string).toISOString() : new Date().toISOString(),
                   receiptNumber: sale.receiptNumber as string || `#${String(sale.receiptNumberValue as number || 0).padStart(6, '0')}`,
                   total: parseFloat(sale.total as string) || 0,
-                  items: Array.isArray(sale.items) ? (sale.items as Record<string, unknown>[]).map((item) => ({
+                  items: Array.isArray(sale.items) ? (sale.items as Record<string, unknown>[]).map((item: Record<string, unknown>) => ({
                     ...item,
                     itemId: item.itemId as string || `item-${Math.random().toString(36).substring(2, 9)}`,
                     name: item.name as string || 'Unknown Product',
@@ -288,7 +288,7 @@ export default function SalesDetailPage() {
       console.error('Error processing sale date:', err);
       setError("Invalid date format in ID");
     }
-  };
+  }, [parseSaleDate, getDateRangeFromSaleDate]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -320,12 +320,12 @@ export default function SalesDetailPage() {
                   receiptNumber: sale.receiptNumber || `#${String(sale.receiptNumberValue || 0).padStart(6, '0')}`,
                   total: parseFloat(sale.total) || 0,
                   items: Array.isArray(sale.items) 
-                    ? sale.items.map(item => ({
+                    ? sale.items.map((item: SaleItem) => ({
                         ...item,
                         itemId: item.itemId || `item-${Math.random().toString(36).substring(2, 9)}`,
                         name: item.name || 'Unknown Product',
-                        price: parseFloat(item.price) || 0, 
-                        quantity: parseInt(item.quantity) || 1
+                        price: parseFloat(item.price.toString()) || 0, 
+                        quantity: parseInt(item.quantity.toString()) || 1
                       }))
                     : []
                 };
@@ -348,7 +348,7 @@ export default function SalesDetailPage() {
                   summary: {
                     totalSales: processedSale.total.toString(),
                     totalTransactions: 1,
-                    totalItems: processedSale.items.reduce((sum, item) => sum + item.quantity, 0),
+                    totalItems: processedSale.items.reduce((sum: number, item: SaleItem) => sum + item.quantity, 0),
                     averageTransaction: processedSale.total.toString()
                   },
                   data: [processedSale]
@@ -384,7 +384,7 @@ export default function SalesDetailPage() {
     };
 
     fetchData();
-  }, [params.id]);
+  }, [params.id, handleDateBasedReport]);
 
   // Collect all products sold during a period
   const collectProductsSold = (sales: SaleTransaction[]): ProductSummary[] => {

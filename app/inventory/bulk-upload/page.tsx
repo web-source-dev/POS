@@ -38,7 +38,7 @@ export default withAuthProtection(function BulkUploadPage() {
             <div>
               <h4 className="font-medium">1. Download the template</h4>
               <p className="text-muted-foreground text-sm">
-                Click the "Download Template" button to get a CSV file with the correct column headers.
+                Click the &nbsp;<span className="font-semibold">Download Template</span>&nbsp; button to get a CSV file with the correct column headers.
               </p>
             </div>
             
@@ -60,14 +60,14 @@ export default withAuthProtection(function BulkUploadPage() {
             <div>
               <h4 className="font-medium">4. Upload your file</h4>
               <p className="text-muted-foreground text-sm">
-                Click the upload area to select your CSV file, then click "Upload Inventory" to start the process.
+                Click the upload area to select your CSV file, then click &nbsp;<span className="font-semibold">Upload Inventory</span>&nbsp; to start the process.
               </p>
             </div>
             
             <div>
               <h4 className="font-medium">5. Review results</h4>
               <p className="text-muted-foreground text-sm">
-                After the upload completes, you'll see a summary of the results, including any errors that occurred.
+                After the upload completes, you&quot;ll see a summary of the results, including any errors that occurred.
               </p>
             </div>
           </div>

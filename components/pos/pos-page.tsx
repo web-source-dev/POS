@@ -6,7 +6,6 @@ import {
   Banknote,
   Minus,
   Plus,
-  Printer,
   Search,
   ShoppingCart,
   Trash,
@@ -321,7 +320,7 @@ export function POSPage() {
       }
       
       // Complete the sale first
-      await completeSale(true)
+      await completeSale()
       return
     }
 
@@ -343,7 +342,7 @@ export function POSPage() {
     }
   }
 
-  const completeSale = async (printAfterSale = true) => {
+  const completeSale = async () => {
     if (cart.length === 0) {
       toast({
         title: "Empty Cart",
