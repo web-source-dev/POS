@@ -103,9 +103,21 @@ type CompletedSale = {
   }
 }
 
+// Add this type definition for the inventory response
+type InventoryResponse = {
+  items: InventoryItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
 export function POSPage() {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState("")
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [categories, setCategories] = useState<{id: number, name: string}[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -128,24 +140,59 @@ export function POSPage() {
   const [currentSale, setCurrentSale] = useState<CompletedSale | null>(null)
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
 
-  // Load inventory and settings on component mount
+  // Add state for active category
+  const [activeCategory, setActiveCategory] = useState('all')
+
+  // Debounce search term to prevent constant API calls while typing
+  // This improves the search input user experience by avoiding focus loss
+  useEffect(() => {
+    // Use a debounce timer to delay the search application
+    const debounceTimer = setTimeout(() => {
+      setAppliedSearchTerm(searchTerm);
+    }, 500); // 500ms debounce delay
+    
+    // Clean up the timer if the component unmounts or searchTerm changes again
+    return () => clearTimeout(debounceTimer);
+  }, [searchTerm]);
+
+  // Load inventory and settings on component mount or filters change
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true)
         
-        // Load inventory items
-        const inventoryData = await posService.getInventory()
-        setInventoryItems(inventoryData)
+        // Load inventory items with current pagination and search params
+        const inventoryResponse = await posService.getInventory({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: appliedSearchTerm || undefined,
+          category: activeCategory !== 'all' ? activeCategory : undefined
+        }) as InventoryResponse
         
-        // Extract categories from inventory
-        const uniqueCategories = Array.from(
-          new Set(inventoryData.map((item: InventoryItem) => item.category))
-        ).map((category, index) => ({
-          id: index + 1,
-          name: category
-        }))
-        setCategories(uniqueCategories)
+        // Set inventory items directly from response
+        setInventoryItems(inventoryResponse.items as InventoryItem[])
+        
+        // Update pagination based on response
+        if (inventoryResponse.pagination) {
+          setTotalPages(inventoryResponse.pagination.totalPages)
+        }
+        
+        // If we need to load categories, only do it the first time
+        if (categories.length === 0) {
+          // Get all categories (separate API call to get all categories regardless of pagination)
+          const allInventoryResponse = await posService.getInventory({
+            limit: 1000 // Get a large number to capture most/all categories
+          }) as InventoryResponse
+          
+          // Extract categories from all inventory items
+          const uniqueCategories = Array.from(
+            new Set(allInventoryResponse.items.map((item: InventoryItem) => item.category))
+          ).filter(Boolean).map((category, index) => ({
+            id: index + 1,
+            name: category as string
+          }))
+          setCategories(uniqueCategories)
+        }
         
         // Load business settings
         const settings = await settingsService.getSettings() as BusinessSettings
@@ -164,7 +211,7 @@ export function POSPage() {
     }
     
     loadData()
-  }, [toast])
+  }, [currentPage, itemsPerPage, appliedSearchTerm, activeCategory, toast, categories.length])
 
   const addToCart = (item: InventoryItem) => {
     const existingItem = cart.find((cartItem) => cartItem.id === item._id)
@@ -388,9 +435,20 @@ export function POSPage() {
         description: `Sale ${result.saleDetails.receiptNumber} completed successfully.`,
       })
       
-      // Refresh inventory data
-      const inventoryData = await posService.getInventory()
-      setInventoryItems(inventoryData)
+      // Refresh inventory data with current filters
+      const inventoryResponse = await posService.getInventory({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: appliedSearchTerm || undefined,
+        category: activeCategory !== 'all' ? activeCategory : undefined
+      }) as InventoryResponse
+      
+      // Update the inventory with fresh data
+      setInventoryItems(inventoryResponse.items as InventoryItem[])
+      
+      if (inventoryResponse.pagination) {
+        setTotalPages(inventoryResponse.pagination.totalPages)
+      }
 
       // Always show the print dialog after completing a sale
       setShowPrintDialog(true)
@@ -416,51 +474,64 @@ export function POSPage() {
   const discount = parseFloat(discountAmount) || 0
   const total = Math.max(0, subtotal - discount)
 
-  // Filter items based on search term
-  const filteredItems = inventoryItems.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.brand && item.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.vehicleName && item.vehicleName.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
-
-  // Calculate pagination logic after filtering items
+  // No need to filter items locally since we're using server-side filtering
+  // This removes the TypeScript error since we're no longer using filteredItems
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value)
+    // Don't reset page on every keystroke, only when the debounced search is applied
+  }
+  
+  // Apply search filter (called after debounce)
   useEffect(() => {
-    // Calculate total pages based on filtered items
-    const totalPagesCount = Math.ceil(filteredItems.length / itemsPerPage)
-    setTotalPages(totalPagesCount)
-    
-    // Reset to first page when search changes
-    setCurrentPage(1)
-  }, [searchTerm, filteredItems.length, itemsPerPage])
+    if (appliedSearchTerm !== searchTerm) {
+      // Only reset page when search is actually applied (not on every keystroke)
+      setCurrentPage(1)
+    }
+  }, [appliedSearchTerm])
+
+  // Get current items - now we directly use the items from the API
+  const currentItems = inventoryItems
 
   // Page navigation functions
-  const goToNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1)
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
     }
+  }
+
+  const goToNextPage = () => {
+    handlePageChange(currentPage + 1)
   }
 
   const goToPreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1)
-    }
+    handlePageChange(currentPage - 1)
   }
 
   const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page)
+    handlePageChange(page)
+  }
+
+  // Handle tab change to filter by category
+  const handleTabChange = (tabValue: string) => {
+    // Reset to page 1 when changing category
+    setCurrentPage(1)
+    
+    // Show loading state
+    setIsLoading(true)
+    
+    if (tabValue === 'all') {
+      setActiveCategory('all')
+    } else {
+      // Extract category name from tab value (format: 'cat-1', 'cat-2', etc.)
+      const categoryId = parseInt(tabValue.replace('cat-', ''))
+      const category = categories.find(cat => cat.id === categoryId)
+      if (category) {
+        setActiveCategory(category.name)
+      }
     }
   }
 
-  // Get current items for the page
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem)
-
-  if (isLoading) {
+  if (isLoading && !searchTerm) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
@@ -486,12 +557,12 @@ export function POSPage() {
               placeholder="Search products by name, SKU, category, brand, vehicle..."
               className="pl-8"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
 
-        <Tabs defaultValue="all">
+        <Tabs defaultValue="all" onValueChange={handleTabChange}>
           <TabsList className="mb-4">
             <TabsTrigger value="all">All Items</TabsTrigger>
             {categories.map((category) => (
@@ -501,157 +572,16 @@ export function POSPage() {
             ))}
           </TabsList>
 
+          {/* Show loading indicator inside each tab content instead of replacing them */}
           <TabsContent value="all" className="mt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentItems.map((item) => (
-                <Card
-                  key={item._id}
-                  className={`cursor-pointer hover:bg-muted/50 transition-colors ${
-                    item.stock <= 0 ? 'opacity-50' : ''
-                  }`}
-                  onClick={() => {
-                    if (item.stock > 0) {
-                      addToCart(item)
-                    }
-                  }}
-                >
-                  <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-base">
-                      <div className="flex justify-between items-center">
-                        <span>{item.name}</span>
-                        <Button 
-                          size="sm" 
-                          variant="secondary" 
-                          disabled={item.stock <= 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (item.stock > 0) {
-                              addToCart(item);
-                            }
-                          }}
-                        >
-                          <Plus className="h-4 w-4 mr-1" /> Add
-                        </Button>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 pb-3">
-                    <div className="text-sm space-y-1">
-                      <div className="flex">
-                        <span className="w-24 font-medium text-muted-foreground">SKU:</span>
-                        <span>{item.sku}</span>
-                      </div>
-                      
-                      {item.brand && (
-                        <div className="flex">
-                          <span className="w-24 font-medium text-muted-foreground">Brand:</span>
-                          <span>{item.brand}</span>
-                        </div>
-                      )}
-                      
-                      {item.vehicleName && (
-                        <div className="flex">
-                          <span className="w-24 font-medium text-muted-foreground">Vehicle:</span>
-                          <span>{item.vehicleName}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex">
-                        <span className="w-24 font-medium text-muted-foreground">Category:</span>
-                        <span>{item.category}</span>
-                      </div>
-                      
-                      <div className="flex">
-                        <span className="w-24 font-medium text-muted-foreground">Stock:</span>
-                        <span className={`${item.status === 'Low Stock' || item.stock <= 5 ? 'text-amber-500' : (item.stock <= 0 ? 'text-red-500' : 'text-green-500')}`}>
-                          {item.stock} ({item.status})
-                        </span>
-                      </div>
-                      
-                      <div className="flex">
-                        <span className="w-24 font-medium text-muted-foreground">Price:</span>
-                        <span className="font-bold">Rs {item.price.toFixed(2)}</span>
-                      </div>
-                      
-                      {item.purchasePrice && (
-                        <div className="flex">
-                          <span className="w-24 font-medium text-muted-foreground">Cost Price:</span>
-                          <span>Rs {item.purchasePrice.toFixed(2)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            
-            {/* Pagination UI */}
-            <div className="flex justify-between items-center mt-6 mb-2">
-              <div className="text-sm text-muted-foreground">
-                Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredItems.length)} of {filteredItems.length} items
+            {isLoading ? (
+              <div className="flex justify-center p-8">
+                <p className="text-muted-foreground">Loading inventory items...</p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={goToPreviousPage} 
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                {/* Page number buttons - only show a reasonable number */}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  // Logic to display page numbers around the current page
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    // If 5 or fewer total pages, show all
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    // If near the start, show first 5 pages
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    // If near the end, show last 5 pages
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    // Otherwise show 2 before and 2 after current page
-                    pageNum = currentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => goToPage(pageNum)}
-                      className="w-8 h-8 p-0"
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                })}
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={goToNextPage} 
-                  disabled={currentPage === totalPages || totalPages === 0}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
-
-          {categories.map((category) => {
-            const categoryItems = filteredItems.filter((item) => item.category === category.name)
-            const categoryTotalPages = Math.ceil(categoryItems.length / itemsPerPage)
-            const categoryCurrentItems = categoryItems.slice(indexOfFirstItem, indexOfLastItem)
-            
-            return (
-              <TabsContent key={category.id} value={`cat-${category.id}`} className="mt-0">
+            ) : (
+              <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {categoryCurrentItems.map((item) => (
+                  {currentItems.map((item) => (
                     <Card
                       key={item._id}
                       className={`cursor-pointer hover:bg-muted/50 transition-colors ${
@@ -705,6 +635,11 @@ export function POSPage() {
                           )}
                           
                           <div className="flex">
+                            <span className="w-24 font-medium text-muted-foreground">Category:</span>
+                            <span>{item.category}</span>
+                          </div>
+                          
+                          <div className="flex">
                             <span className="w-24 font-medium text-muted-foreground">Stock:</span>
                             <span className={`${item.status === 'Low Stock' || item.stock <= 5 ? 'text-amber-500' : (item.stock <= 0 ? 'text-red-500' : 'text-green-500')}`}>
                               {item.stock} ({item.status})
@@ -728,10 +663,10 @@ export function POSPage() {
                   ))}
                 </div>
                 
-                {/* Pagination UI for category tabs */}
+                {/* Pagination UI */}
                 <div className="flex justify-between items-center mt-6 mb-2">
                   <div className="text-sm text-muted-foreground">
-                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, categoryItems.length)} of {categoryItems.length} items
+                    Showing {currentItems.length} of {totalPages * itemsPerPage} items
                   </div>
                   <div className="flex items-center gap-2">
                     <Button 
@@ -743,21 +678,16 @@ export function POSPage() {
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     
-                    {/* Page number buttons - only show a reasonable number */}
-                    {Array.from({ length: Math.min(5, categoryTotalPages) }, (_, i) => {
-                      // Logic to display page numbers around the current page
+                    {/* Page buttons */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum;
-                      if (categoryTotalPages <= 5) {
-                        // If 5 or fewer total pages, show all
+                      if (totalPages <= 5) {
                         pageNum = i + 1;
                       } else if (currentPage <= 3) {
-                        // If near the start, show first 5 pages
                         pageNum = i + 1;
-                      } else if (currentPage >= categoryTotalPages - 2) {
-                        // If near the end, show last 5 pages
-                        pageNum = categoryTotalPages - 4 + i;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
                       } else {
-                        // Otherwise show 2 before and 2 after current page
                         pageNum = currentPage - 2 + i;
                       }
                       
@@ -778,12 +708,158 @@ export function POSPage() {
                       variant="outline" 
                       size="sm" 
                       onClick={goToNextPage} 
-                      disabled={currentPage === categoryTotalPages || categoryTotalPages === 0}
+                      disabled={currentPage === totalPages || totalPages === 0}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
+              </>
+            )}
+          </TabsContent>
+
+          {categories.map((category) => {
+            const categoryItems = currentItems.filter((item) => item.category === category.name)
+            
+            return (
+              <TabsContent key={category.id} value={`cat-${category.id}`} className="mt-0">
+                {isLoading ? (
+                  <div className="flex justify-center p-8">
+                    <p className="text-muted-foreground">Loading inventory items...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {categoryItems.map((item) => (
+                        <Card
+                          key={item._id}
+                          className={`cursor-pointer hover:bg-muted/50 transition-colors ${
+                            item.stock <= 0 ? 'opacity-50' : ''
+                          }`}
+                          onClick={() => {
+                            if (item.stock > 0) {
+                              addToCart(item)
+                            }
+                          }}
+                        >
+                          <CardHeader className="p-4 pb-2">
+                            <CardTitle className="text-base">
+                              <div className="flex justify-between items-center">
+                                <span>{item.name}</span>
+                                <Button 
+                                  size="sm" 
+                                  variant="secondary" 
+                                  disabled={item.stock <= 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item.stock > 0) {
+                                      addToCart(item);
+                                    }
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" /> Add
+                                </Button>
+                              </div>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0 pb-3">
+                            <div className="text-sm space-y-1">
+                              <div className="flex">
+                                <span className="w-24 font-medium text-muted-foreground">SKU:</span>
+                                <span>{item.sku}</span>
+                              </div>
+                              
+                              {item.brand && (
+                                <div className="flex">
+                                  <span className="w-24 font-medium text-muted-foreground">Brand:</span>
+                                  <span>{item.brand}</span>
+                                </div>
+                              )}
+                              
+                              {item.vehicleName && (
+                                <div className="flex">
+                                  <span className="w-24 font-medium text-muted-foreground">Vehicle:</span>
+                                  <span>{item.vehicleName}</span>
+                                </div>
+                              )}
+                              
+                              <div className="flex">
+                                <span className="w-24 font-medium text-muted-foreground">Stock:</span>
+                                <span className={`${item.status === 'Low Stock' || item.stock <= 5 ? 'text-amber-500' : (item.stock <= 0 ? 'text-red-500' : 'text-green-500')}`}>
+                                  {item.stock} ({item.status})
+                                </span>
+                              </div>
+                              
+                              <div className="flex">
+                                <span className="w-24 font-medium text-muted-foreground">Price:</span>
+                                <span className="font-bold">Rs {item.price.toFixed(2)}</span>
+                              </div>
+                              
+                              {item.purchasePrice && (
+                                <div className="flex">
+                                  <span className="w-24 font-medium text-muted-foreground">Cost Price:</span>
+                                  <span>Rs {item.purchasePrice.toFixed(2)}</span>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                    
+                    {/* Category pagination */}
+                    <div className="flex justify-between items-center mt-6 mb-2">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {categoryItems.length} of {totalPages * itemsPerPage} items
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={goToPreviousPage} 
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* Page buttons */}
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={currentPage === pageNum ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => goToPage(pageNum)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={goToNextPage} 
+                          disabled={currentPage === totalPages || totalPages === 0}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </TabsContent>
             )
           })}

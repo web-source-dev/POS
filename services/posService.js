@@ -7,7 +7,7 @@ import settingsService from "./settingsService";
 const posService = {
   /**
    * Get real-time inventory data
-   * @returns {Promise<Array>} List of inventory items
+   * @returns {Promise<Object>} Object containing inventory items and pagination metadata
    */
   getInventory: async (filters = {}) => {
     try {
@@ -17,9 +17,14 @@ const posService = {
       if (filters.category) queryParams.append('category', filters.category);
       if (filters.brand) queryParams.append('brand', filters.brand);
       if (filters.vehicleName) queryParams.append('vehicleName', filters.vehicleName);
+      if (filters.page) queryParams.append('page', filters.page);
+      if (filters.limit) queryParams.append('limit', filters.limit);
       
       const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-      return await api.get(`/inventory${queryString}`);
+      const response = await api.get(`/sales/inventory${queryString}`);
+      
+      // Return the structured response with items and pagination metadata
+      return response;
     } catch (error) {
       console.error('Error fetching inventory:', error);
       throw error;

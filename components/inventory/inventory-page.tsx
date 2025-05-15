@@ -48,6 +48,12 @@ export function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
+  const [allLowStockItems, setAllLowStockItems] = useState<InventoryItem[]>([])
+  const [allOutOfStockItems, setAllOutOfStockItems] = useState<InventoryItem[]>([])
+  const [allCategoryItems, setAllCategoryItems] = useState<InventoryItem[]>([])
+  const [allSupplierItems, setAllSupplierItems] = useState<InventoryItem[]>([])
+  const [loadingSpecialTabs, setLoadingSpecialTabs] = useState(false)
+  const [activeTab, setActiveTab] = useState("all-items")
   const [statistics, setStatistics] = useState({
     totalItems: 0,
     lowStockItems: 0,
@@ -365,73 +371,104 @@ export function InventoryPage() {
     setUpdateStockDialogOpen(true)
   }
 
-  const handleExport = () => {
-    // Create CSV content
-    const headers = ["Name", "SKU", "Category", "Subcategory", "Subcategory2", "Brand", "Vehicle Name", "Supplier", "Stock", "Price", "Purchase Price", "Status", "Location", "Reorder Level"]
-    
-    // Function to properly escape CSV values
-    const escapeCSV = (value: string) => {
-      if (value === null || value === undefined) return "";
-      const stringValue = String(value);
+  const handleExport = async () => {
+    try {
+      // Show loading toast
+      toast({
+        title: "Preparing Export",
+        description: "Gathering all inventory data for export...",
+      });
       
-      // If the value contains quotes, commas, or newlines, it needs to be escaped
-      if (stringValue.includes('"') || stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('\r')) {
-        // Double up any quotes and wrap the whole thing in quotes
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      }
-      return stringValue;
-    };
-    
-    // Create rows with properly escaped data
-    const csvRows = [
-      // Convert headers to proper CSV format
-      headers.map(header => escapeCSV(header)).join(',')
-    ];
-    
-    // Add each inventory item as a row
-    inventoryItems.forEach(item => {
-      const rowData = [
-        escapeCSV(item.name),
-        escapeCSV(item.sku),
-        escapeCSV(item.category),
-        escapeCSV(item.subcategory || ""),
-        escapeCSV(item.subcategory2 || ""),
-        escapeCSV(item.brand || ""),
-        escapeCSV(item.vehicleName || ""),
-        escapeCSV(getSupplierName(item.supplier)),
-        escapeCSV(item.stock.toString()),
-        escapeCSV(item.price.toFixed(2)),
-        escapeCSV(item.purchasePrice ? item.purchasePrice.toFixed(2) : ""),
-        escapeCSV(item.status),
-        escapeCSV(item.location || ""),
-        escapeCSV(item.reorderLevel.toString())
-      ].join(',');
+      // Build filters object based on current filters
+      const filters = {
+        search: searchTerm,
+        category: categoryFilter,
+        subcategory: subcategoryFilter,
+        subcategory2: subcategory2Filter,
+        status: statusFilter,
+        brand: brandFilter,
+        vehicleName: vehicleNameFilter,
+        supplier: supplierFilter
+      };
       
-      csvRows.push(rowData);
-    });
-    
-    // Join all rows with newlines to create the complete CSV content
-    const csvContent = csvRows.join("\r\n");
-    
-    // Add UTF-8 BOM for better Excel compatibility
-    const BOM = "\uFEFF";
-    const csvContentWithBOM = BOM + csvContent;
-    
-    // Create blob and download
-    const blob = new Blob([csvContentWithBOM], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "inventory_export.csv");
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({
-      title: "Export Complete",
-      description: "Your inventory data has been exported to CSV.",
-    });
+      // Fetch all items without pagination
+      const response = await inventoryService.getAllItems(filters);
+      const { items } = response as { items: InventoryItem[] };
+      
+      // Create CSV content
+      const headers = ["Name", "SKU", "Category", "Subcategory", "Subcategory2", "Brand", "Vehicle Name", "Supplier", "Stock", "Price", "Purchase Price", "Status", "Location", "Reorder Level"];
+      
+      // Function to properly escape CSV values
+      const escapeCSV = (value: string) => {
+        if (value === null || value === undefined) return "";
+        const stringValue = String(value);
+        
+        // If the value contains quotes, commas, or newlines, it needs to be escaped
+        if (stringValue.includes('"') || stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('\r')) {
+          // Double up any quotes and wrap the whole thing in quotes
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+      
+      // Create rows with properly escaped data
+      const csvRows = [
+        // Convert headers to proper CSV format
+        headers.map(header => escapeCSV(header)).join(',')
+      ];
+      
+      // Add each inventory item as a row
+      items.forEach(item => {
+        const rowData = [
+          escapeCSV(item.name),
+          escapeCSV(item.sku),
+          escapeCSV(item.category),
+          escapeCSV(item.subcategory || ""),
+          escapeCSV(item.subcategory2 || ""),
+          escapeCSV(item.brand || ""),
+          escapeCSV(item.vehicleName || ""),
+          escapeCSV(getSupplierName(item.supplier)),
+          escapeCSV(item.stock.toString()),
+          escapeCSV(item.price.toFixed(2)),
+          escapeCSV(item.purchasePrice ? item.purchasePrice.toFixed(2) : ""),
+          escapeCSV(item.status),
+          escapeCSV(item.location || ""),
+          escapeCSV(item.reorderLevel.toString())
+        ].join(',');
+        
+        csvRows.push(rowData);
+      });
+      
+      // Join all rows with newlines to create the complete CSV content
+      const csvContent = csvRows.join("\r\n");
+      
+      // Add UTF-8 BOM for better Excel compatibility
+      const BOM = "\uFEFF";
+      const csvContentWithBOM = BOM + csvContent;
+      
+      // Create blob and download
+      const blob = new Blob([csvContentWithBOM], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "inventory_export.csv");
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Export Complete",
+        description: `${items.length} inventory items have been exported to CSV.`,
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export Failed",
+        description: "There was a problem exporting your inventory data.",
+        variant: "destructive"
+      });
+    }
   }
 
   const handleDeleteItem = async () => {
@@ -464,9 +501,6 @@ export function InventoryPage() {
     setItemToDelete(item)
     setDeleteDialogOpen(true)
   }
-
-  const lowStockItems = inventoryItems.filter((item) => item.status === "Low Stock")
-  const outOfStockItems = inventoryItems.filter((item) => item.status === "Out of Stock")
 
   // Status badge styling
   const getStatusBadgeStyles = (status: string) => {
@@ -674,6 +708,74 @@ export function InventoryPage() {
     }
   }
 
+  // Load all data for special tabs (Low Stock, Out of Stock, Categories, Suppliers)
+  const loadAllTabsData = useCallback(async (tabName: string) => {
+    if (tabName === 'all-items') return; // Skip for main tab
+    
+    try {
+      setLoadingSpecialTabs(true);
+      
+      // Define status filter based on tab
+      let statusFilter = '';
+      if (tabName === 'low-stock') statusFilter = 'Low Stock';
+      if (tabName === 'out-of-stock') statusFilter = 'Out of Stock';
+      
+      // Build filters object
+      const filters = {
+        search: searchTerm,
+        category: categoryFilter,
+        subcategory: subcategoryFilter,
+        subcategory2: subcategory2Filter,
+        brand: brandFilter,
+        vehicleName: vehicleNameFilter,
+        supplier: supplierFilter,
+        status: statusFilter
+      };
+      
+      // Fetch all items without pagination
+      const response = await inventoryService.getAllItems(filters);
+      const { items } = response as { items: InventoryItem[] };
+      
+      // Set data based on the active tab
+      if (tabName === 'low-stock') {
+        setAllLowStockItems(items);
+      } else if (tabName === 'out-of-stock') {
+        setAllOutOfStockItems(items);
+      } else if (tabName === 'categories' || tabName === 'suppliers') {
+        // For categories and suppliers, we need all items to show proper counts
+        if (tabName === 'categories') {
+          setAllCategoryItems(items);
+        } else {
+          setAllSupplierItems(items);
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to load data for ${tabName} tab:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to load ${tabName} data. Please try again.`,
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingSpecialTabs(false);
+    }
+  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, brandFilter, vehicleNameFilter, supplierFilter, toast]);
+  
+  // Add effect to load data when active tab changes
+  useEffect(() => {
+    if (user && activeTab !== 'all-items') {
+      loadAllTabsData(activeTab);
+    }
+  }, [activeTab, user, loadAllTabsData]);
+
+  const handleRefresh = () => {
+    if (activeTab === 'all-items') {
+      loadInventoryData();
+    } else {
+      loadAllTabsData(activeTab);
+    }
+  };
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -692,21 +794,15 @@ export function InventoryPage() {
 
       {!loading && <StatisticsDashboard />}
 
-      <Tabs defaultValue="all-items" className="space-y-4">
+      <Tabs defaultValue="all-items" className="space-y-4" onValueChange={setActiveTab}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
           <TabsList className="bg-muted/60 p-1 rounded-lg">
             <TabsTrigger value="all-items" className="rounded-md">All Items</TabsTrigger>
             <TabsTrigger value="low-stock" className="rounded-md">
               Low Stock
-              <Badge variant="outline" className="ml-1 bg-amber-100/50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
-                {statistics.lowStockItems}
-              </Badge>
             </TabsTrigger>
             <TabsTrigger value="out-of-stock" className="rounded-md">
               Out of Stock
-              <Badge variant="outline" className="ml-1 bg-red-100/50 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
-                {statistics.outOfStockItems}
-              </Badge>
             </TabsTrigger>
             <TabsTrigger value="categories" className="rounded-md">Categories</TabsTrigger>
             <TabsTrigger value="suppliers" className="rounded-md">Suppliers</TabsTrigger>
@@ -717,7 +813,7 @@ export function InventoryPage() {
               <FileDown className="h-4 w-4" />
               <span className="hidden sm:inline">Export</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={loadInventoryData} className="gap-1.5 shadow-sm hover:shadow transition-all">
+            <Button variant="outline" size="sm" onClick={handleRefresh} className="gap-1.5 shadow-sm hover:shadow transition-all">
               <RefreshCw className="h-4 w-4" />
               <span className="hidden sm:inline">Refresh</span>
             </Button>
@@ -1195,11 +1291,11 @@ export function InventoryPage() {
               <CardDescription>Items that need to be reordered soon</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {loading ? (
+              {loading || loadingSpecialTabs ? (
                 <div className="p-4">
                   <TableSkeleton />
                 </div>
-              ) : lowStockItems.length > 0 ? (
+              ) : allLowStockItems.length > 0 ? (
                 <ScrollArea className="h-[calc(100vh-320px)] min-h-[400px]">
                   <Table>
                     <TableHeader className="bg-muted/50 sticky top-0 z-10">
@@ -1214,7 +1310,7 @@ export function InventoryPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {lowStockItems.map((item) => (
+                      {allLowStockItems.map((item) => (
                         <TableRow key={item._id} className="group hover:bg-muted/50 transition-colors">
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell>{item.sku}</TableCell>
@@ -1282,11 +1378,11 @@ export function InventoryPage() {
               <CardDescription>Items that need immediate attention</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {loading ? (
+              {loading || loadingSpecialTabs ? (
                 <div className="p-4">
                   <TableSkeleton />
                 </div>
-              ) : outOfStockItems.length > 0 ? (
+              ) : allOutOfStockItems.length > 0 ? (
                 <ScrollArea className="h-[calc(100vh-320px)] min-h-[400px]">
                   <Table>
                     <TableHeader className="bg-muted/50 sticky top-0 z-10">
@@ -1299,7 +1395,7 @@ export function InventoryPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {outOfStockItems.map((item) => (
+                      {allOutOfStockItems.map((item) => (
                         <TableRow key={item._id} className="group hover:bg-muted/50 transition-colors">
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell>{item.sku}</TableCell>
@@ -1365,14 +1461,14 @@ export function InventoryPage() {
               <CardDescription>Manage inventory categories</CardDescription>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {loading || loadingSpecialTabs ? (
                 <div className="h-72 flex items-center justify-center">
                   <p>Loading category data...</p>
                 </div>
               ) : categories.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {categories.map((category) => {
-                    const count = inventoryItems.filter((item) => item.category === category).length
+                    const count = allCategoryItems.filter((item) => item.category === category).length
                     return (
                       <Card key={category}>
                         <CardHeader className="pb-2">
@@ -1408,14 +1504,14 @@ export function InventoryPage() {
               <CardDescription>Manage your inventory suppliers</CardDescription>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {loading || loadingSpecialTabs ? (
                 <div className="h-72 flex items-center justify-center">
                   <p>Loading supplier data...</p>
                 </div>
               ) : suppliers.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {suppliers.map((supplier) => {
-                    const supplierItems = inventoryItems.filter((item) => {
+                    const supplierItems = allSupplierItems.filter((item) => {
                       const supplierName = getSupplierName(item.supplier);
                       return supplierName === supplier.name;
                     });
