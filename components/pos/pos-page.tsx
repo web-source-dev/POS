@@ -115,7 +115,8 @@ export function POSPage() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(50)
+  const [itemsPerPage] = useState(20)
+  const [totalPages, setTotalPages] = useState(1)
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [cashAmount, setCashAmount] = useState("")
@@ -425,13 +426,15 @@ export function POSPage() {
       (item.vehicleName && item.vehicleName.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
-  
-  // Get current items for the page
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem)
+  // Calculate pagination logic after filtering items
+  useEffect(() => {
+    // Calculate total pages based on filtered items
+    const totalPagesCount = Math.ceil(filteredItems.length / itemsPerPage)
+    setTotalPages(totalPagesCount)
+    
+    // Reset to first page when search changes
+    setCurrentPage(1)
+  }, [searchTerm, filteredItems.length, itemsPerPage])
 
   // Page navigation functions
   const goToNextPage = () => {
@@ -446,10 +449,16 @@ export function POSPage() {
     }
   }
 
-  // Reset to first page when search changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm])
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
+  // Get current items for the page
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem)
 
   if (isLoading) {
     return (
@@ -584,9 +593,38 @@ export function POSPage() {
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="text-sm">
-                  Page {currentPage} of {totalPages}
-                </span>
+                
+                {/* Page number buttons - only show a reasonable number */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  // Logic to display page numbers around the current page
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    // If 5 or fewer total pages, show all
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    // If near the start, show first 5 pages
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    // If near the end, show last 5 pages
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    // Otherwise show 2 before and 2 after current page
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => goToPage(pageNum)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+                
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -692,9 +730,38 @@ export function POSPage() {
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <span className="text-sm">
-                      Page {currentPage} of {categoryTotalPages || 1}
-                    </span>
+                    
+                    {/* Page number buttons - only show a reasonable number */}
+                    {Array.from({ length: Math.min(5, categoryTotalPages) }, (_, i) => {
+                      // Logic to display page numbers around the current page
+                      let pageNum;
+                      if (categoryTotalPages <= 5) {
+                        // If 5 or fewer total pages, show all
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        // If near the start, show first 5 pages
+                        pageNum = i + 1;
+                      } else if (currentPage >= categoryTotalPages - 2) {
+                        // If near the end, show last 5 pages
+                        pageNum = categoryTotalPages - 4 + i;
+                      } else {
+                        // Otherwise show 2 before and 2 after current page
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => goToPage(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                    
                     <Button 
                       variant="outline" 
                       size="sm" 

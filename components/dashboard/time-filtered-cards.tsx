@@ -6,7 +6,6 @@ import { formatCurrency } from "@/lib/utils";
 import { 
   TrendingUp, 
   TrendingDown, 
-  DollarSign, 
   CreditCard, 
   BarChart4,
   ShoppingBag

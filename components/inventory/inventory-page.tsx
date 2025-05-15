@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { ArrowUpDown, Box, Plus, Search, Trash2, AlertCircle, Edit, Package, FileDown, RefreshCw, DollarSign, TrendingUp, CheckCircle, Filter, XCircle, X, Eye, FileUp } from "lucide-react"
+import { ArrowUpDown, Box, Plus, Search, Trash2, AlertCircle, Edit, Package, FileDown, RefreshCw, DollarSign, TrendingUp, CheckCircle, Filter, XCircle, X, Eye, FileUp, ChevronLeft, ChevronRight } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -81,6 +81,10 @@ export function InventoryPage() {
   const [subcategories, setSubcategories] = useState<string[]>([])
   const [subcategories2, setSubcategories2] = useState<string[]>([])
   const [vehicleNames, setVehicleNames] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(20)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
 
   // Check if filters are applied
   const isFiltered = useMemo(() => {
@@ -116,19 +120,23 @@ export function InventoryPage() {
         supplier: supplierFilter
       }
       
-      const items = await inventoryService.getItems(filters)
+      const response = await inventoryService.getItems(filters, currentPage, itemsPerPage)
+      
+      // Extract items and pagination metadata from the response
+      const { items, pagination } = response as { items: InventoryItem[]; pagination: { totalItems: number; totalPages: number } };
       setInventoryItems(items as InventoryItem[])
+      setTotalItems(pagination.totalItems)
+      setTotalPages(pagination.totalPages)
       
       // Calculate statistics from filtered items
       if (isFiltered) {
-        const filteredItems = items as InventoryItem[];
         const filteredStats = {
-          totalItems: filteredItems.length,
-          lowStockItems: filteredItems.filter(item => item.status === "Low Stock").length,
-          outOfStockItems: filteredItems.filter(item => item.status === "Out of Stock").length,
-          totalValue: filteredItems.reduce((sum, item) => sum + (item.price * item.stock), 0),
-          totalPurchaseValue: filteredItems.reduce((sum, item) => sum + ((item.purchasePrice || 0) * item.stock), 0),
-          potentialProfit: filteredItems.reduce((sum, item) => sum + ((item.price - (item.purchasePrice || 0)) * item.stock), 0)
+          totalItems: pagination.totalItems,
+          lowStockItems: (items as InventoryItem[]).filter(item => item.status === "Low Stock").length,
+          outOfStockItems: (items as InventoryItem[]).filter(item => item.status === "Out of Stock").length,
+          totalValue: (items as InventoryItem[]).reduce((sum, item) => sum + (item.price * item.stock), 0),
+          totalPurchaseValue: (items as InventoryItem[]).reduce((sum, item) => sum + ((item.purchasePrice || 0) * item.stock), 0),
+          potentialProfit: (items as InventoryItem[]).reduce((sum, item) => sum + ((item.price - (item.purchasePrice || 0)) * item.stock), 0)
         }
         setStatistics(filteredStats);
       } else {
@@ -152,7 +160,7 @@ export function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, vehicleNameFilter, supplierFilter, toast, isFiltered])
+  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, vehicleNameFilter, supplierFilter, toast, isFiltered, currentPage, itemsPerPage])
 
   // Load subcategories when category changes
   useEffect(() => {
@@ -312,6 +320,11 @@ export function InventoryPage() {
       }
     }
   }, [user, categories]); // Only run when categories list changes or user changes
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, vehicleNameFilter, supplierFilter])
 
   // Clear all filters
   const clearAllFilters = () => {
@@ -641,6 +654,25 @@ export function InventoryPage() {
       ))}
     </div>
   );
+
+  // Add page navigation functions
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1)
+    }
+  }
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -1068,6 +1100,64 @@ export function InventoryPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  
+                  {/* Pagination Controls */}
+                  <div className="flex justify-between items-center p-4 border-t">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {Math.min(totalItems, (currentPage - 1) * itemsPerPage + 1)}-
+                      {Math.min(totalItems, currentPage * itemsPerPage)} of {totalItems} items
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={goToPreviousPage} 
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      
+                      {/* Page number buttons - only show a reasonable number */}
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        // Logic to display page numbers around the current page
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          // If 5 or fewer total pages, show all
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          // If near the start, show first 5 pages
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          // If near the end, show last 5 pages
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          // Otherwise show 2 before and 2 after current page
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => goToPage(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={goToNextPage} 
+                        disabled={currentPage === totalPages || totalPages === 0}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </ScrollArea>
               ) : (
                 <div className="h-72 flex items-center justify-center border-t">
