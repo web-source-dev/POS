@@ -112,7 +112,7 @@ export function InventoryPerformanceChart({ data }) {
             </div>
             <h3 className="text-xl font-medium mb-2">No Sales Data Available</h3>
             <p className="text-muted-foreground max-w-md">
-              Your inventory items haven't recorded any sales yet. Once you start making sales, 
+              Your inventory items haven&apos;t recorded any sales yet. Once you start making sales, 
               performance metrics will appear here automatically.
             </p>
           </div>

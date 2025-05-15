@@ -88,7 +88,7 @@ export function InventoryPerformanceTable({ data }) {
         <CardTitle>
           {hasSalesData ? currentCategory.label : "Inventory Items (No Sales Data)"}
           {!hasSalesData && <div className="text-sm font-normal text-muted-foreground mt-1">
-            Your inventory items haven't recorded any sales yet.
+            Your inventory items haven&apos;t recorded any sales yet.
           </div>}
         </CardTitle>
         <div className="flex flex-col md:flex-row md:justify-between gap-4">
