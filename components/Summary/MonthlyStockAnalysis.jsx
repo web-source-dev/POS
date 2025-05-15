@@ -666,7 +666,7 @@ export function MonthlyStockAnalysis({ data }) {
                             <div className="text-xl font-bold">
                               {showHistorical 
                                 ? `~${selectedItem.soldQuantity} units` 
-                                : `$${selectedItem.price.toFixed(2)}`
+                                : `Rs ${selectedItem.price.toFixed(2)}`
                               }
                             </div>
                           </CardContent>
@@ -682,7 +682,7 @@ export function MonthlyStockAnalysis({ data }) {
                             <div className="text-xl font-bold">
                               {showHistorical
                                 ? `${selectedItem.historicalStock} units`
-                                : `$${(selectedItem.stock * selectedItem.price).toFixed(2)}`
+                                : `Rs ${(selectedItem.stock * selectedItem.price).toFixed(2)}`
                               }
                             </div>
                           </CardContent>
