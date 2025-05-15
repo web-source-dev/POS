@@ -21,11 +21,10 @@ interface ApiResponse {
 }
 
 interface InventoryItem {
-  id: string;
-  _id?: string;
   name: string;
   sku: string;
   category: string;
+  vehicleName?: string;
   stock: number;
   price: number;
   value?: number;
@@ -60,7 +59,9 @@ const InventoryReportView: FC = () => {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedVehicle, setSelectedVehicle] = useState('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [vehicles, setVehicles] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,12 +70,10 @@ const InventoryReportView: FC = () => {
         const inventoryResponse = await reportService.getInventoryReport() as ApiResponse;
         const categoryResponse = await reportService.getInventoryByCategory() as ApiResponse;
         
-        console.log('Inventory Response:', inventoryResponse);
-        console.log('Category Response:', categoryResponse);
         
         // Process inventory data
         if (inventoryResponse && inventoryResponse.success) {
-          if (inventoryResponse.data) {
+          if (inventoryResponse.data && Array.isArray(inventoryResponse.data) && inventoryResponse.data.length > 0) {
             const inventoryItems = inventoryResponse.data as InventoryItem[];
             setInventoryData(inventoryItems);
             setFilteredInventory(inventoryItems);
@@ -85,8 +84,21 @@ const InventoryReportView: FC = () => {
             ) as string[];
             setCategories(uniqueCategories);
             
-            // Generate mock stock movement data
-            generateStockMovementData(inventoryItems);
+            // Extract unique vehicle names for the filter
+            const uniqueVehicles = Array.from(
+              new Set(
+                inventoryItems
+                  .filter(item => item.vehicleName && typeof item.vehicleName === 'string' && item.vehicleName.trim() !== '')
+                  .map(item => item.vehicleName as string)
+              )
+            ) as string[];
+            setVehicles(uniqueVehicles);
+          } else {
+            // Set empty arrays if no data
+            setInventoryData([]);
+            setFilteredInventory([]);
+            setCategories([]);
+            setVehicles([]);
           }
           
           // Set summary data
@@ -98,22 +110,48 @@ const InventoryReportView: FC = () => {
               lowStockItems: Number(summaryData.lowStockItems) || 0,
               outOfStockItems: Number(summaryData.outOfStockItems) || 0,
             });
+          } else {
+            // Reset summary if not available
+            setSummary({
+              totalItems: 0,
+              totalValue: 0,
+              lowStockItems: 0,
+              outOfStockItems: 0,
+            });
           }
+        } else {
+          // Reset data if response not successful
+          setInventoryData([]);
+          setFilteredInventory([]);
+          setCategories([]);
+          setVehicles([]);
+          setSummary({
+            totalItems: 0,
+            totalValue: 0,
+            lowStockItems: 0,
+            outOfStockItems: 0,
+          });
         }
         
         // Process category data
         if (categoryResponse && categoryResponse.success && categoryResponse.data) {
           // Type guard to ensure we have an array
-          const categoryItems = Array.isArray(categoryResponse.data) 
+          const categoryItems = Array.isArray(categoryResponse.data) && categoryResponse.data.length > 0
             ? categoryResponse.data as CategoryData[]
             : [];
           
-          // Sort by value for better visualization
-          const sortedCategories = [...categoryItems].sort(
-            (a, b) => b.value - a.value
-          );
-          
-          setCategoryData(sortedCategories);
+          if (categoryItems.length > 0) {
+            // Sort by value for better visualization
+            const sortedCategories = [...categoryItems].sort(
+              (a, b) => b.value - a.value
+            );
+            
+            setCategoryData(sortedCategories);
+          } else {
+            setCategoryData([]);
+          }
+        } else {
+          setCategoryData([]);
         }
       } catch (error) {
         console.error('Error fetching inventory report data:', error);
@@ -124,43 +162,6 @@ const InventoryReportView: FC = () => {
     fetchData();
   }, []);
   
-  // Generate mock stock movement data
-  const generateStockMovementData = (inventoryItems: InventoryItem[]) => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    // Take top 5 products by value for the trend
-    const topProducts = [...inventoryItems]
-      .sort((a, b) => (b.stock * b.price) - (a.stock * a.price))
-      .slice(0, 5);
-    
-    // Generate stock level over time
-    const stockHistory = topProducts.map(product => {
-      const monthlyData = months.slice(0, currentMonth + 1).map((month, idx) => {
-        // For realistic trends, start with current stock and work backwards with some variations
-        const currentStock = product.stock;
-        const minStock = Math.max(0, currentStock - Math.round(currentStock * 0.5));
-        const movementFactor = 1 - (currentMonth - idx) / (currentMonth + 1);
-        const stockLevel = Math.round(minStock + (currentStock - minStock) * movementFactor);
-        
-        return {
-          product: product.name,
-          month: `${month} ${currentYear}`,
-          stock: stockLevel,
-          value: stockLevel * product.price
-        };
-      });
-      
-      return monthlyData;
-    });
-    
-    // Log the stock history after it's fully initialized
-    console.log(stockHistory);
-    
-    // Flatten the data
-  };
-
   // Filter inventory based on search query and category
   const filterInventory = useCallback(() => {
     let filtered = [...inventoryData];
@@ -170,7 +171,8 @@ const InventoryReportView: FC = () => {
       filtered = filtered.filter(item => 
         item.name.toLowerCase().includes(query) || 
         item.sku.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query)
+        item.category.toLowerCase().includes(query) ||
+        (item.vehicleName && typeof item.vehicleName === 'string' && item.vehicleName.toLowerCase().includes(query))
       );
     }
     
@@ -178,8 +180,12 @@ const InventoryReportView: FC = () => {
       filtered = filtered.filter(item => item.category === selectedCategory);
     }
     
+    if (selectedVehicle && selectedVehicle !== 'all') {
+      filtered = filtered.filter(item => item.vehicleName === selectedVehicle);
+    }
+    
     setFilteredInventory(filtered);
-  }, [inventoryData, searchQuery, selectedCategory]);
+  }, [inventoryData, searchQuery, selectedCategory, selectedVehicle]);
 
   // Handle search query change
   useEffect(() => {
@@ -214,10 +220,6 @@ const InventoryReportView: FC = () => {
   // Columns for the inventory table
   const inventoryColumns = [
     {
-      header: 'ID',
-      accessorKey: 'id',
-    },
-    {
       header: 'Product',
       accessorKey: 'name',
     },
@@ -228,6 +230,11 @@ const InventoryReportView: FC = () => {
     {
       header: 'Category',
       accessorKey: 'category',
+    },
+    {
+      header: 'Vehicle',
+      accessorKey: 'vehicleName',
+      cell: (value: unknown) => safeString(value) || '-'
     },
     {
       header: 'Stock',
@@ -369,11 +376,30 @@ const InventoryReportView: FC = () => {
             </SelectContent>
           </Select>
         </div>
+        {vehicles.length > 0 && (
+          <div className="w-full md:w-[200px]">
+            <Select 
+              value={selectedVehicle} 
+              onValueChange={setSelectedVehicle}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select vehicle" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Vehicles</SelectItem>
+                {vehicles.map((vehicle, index) => (
+                  <SelectItem key={index} value={vehicle}>{vehicle}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <Button 
           variant="outline" 
           onClick={() => {
             setSearchQuery('');
             setSelectedCategory('all');
+            setSelectedVehicle('all');
           }}
         >
           Reset Filters
@@ -424,7 +450,7 @@ const InventoryReportView: FC = () => {
             }))} 
             columns={inventoryColumns}
             title="Inventory"
-            description={`${filteredInventory.length} items found${searchQuery ? ' matching your search' : ''}${selectedCategory !== 'all' ? ` in category "${selectedCategory}"` : ''}`}
+            description={`${filteredInventory.length} items found${searchQuery ? ' matching your search' : ''}${selectedCategory !== 'all' ? ` in category "${selectedCategory}"` : ''}${selectedVehicle !== 'all' ? ` for vehicle "${selectedVehicle}"` : ''}`}
             onRowClick={handleInventoryRowClick}
           />
         </TabsContent>

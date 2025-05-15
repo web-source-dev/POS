@@ -89,33 +89,40 @@ const PieChartComponent: FC<PieChartProps> = ({
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <ReChartPie>
-              <Pie
-                data={data}
-                dataKey={valueKey}
-                nameKey={nameKey}
-                cx="50%"
-                cy="50%"
-                outerRadius={showLegend ? 80 : 120}
-                innerRadius={showLegend ? 50 : 70}
-                paddingAngle={3}
-                label={({ name, percent }) => showLegend ? null : `${name} (${formatPercent(percent * 100)})`}
-                labelLine={!showLegend}
-              >
-                {data.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.color || extendedColors[index % extendedColors.length]} 
-                  />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              {showLegend && <Legend />}
-            </ReChartPie>
-          </ResponsiveContainer>
-        </div>
+        {!data || data.length === 0 ? (
+          <div className="h-[300px] flex items-center justify-center flex-col">
+            <p className="text-lg text-muted-foreground">No data available</p>
+            <p className="text-sm text-muted-foreground">No data found for this chart</p>
+          </div>
+        ) : (
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ReChartPie>
+                <Pie
+                  data={data}
+                  dataKey={valueKey}
+                  nameKey={nameKey}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={showLegend ? 80 : 120}
+                  innerRadius={showLegend ? 50 : 70}
+                  paddingAngle={3}
+                  label={({ name, percent }) => showLegend ? null : `${name} (${formatPercent(percent * 100)})`}
+                  labelLine={!showLegend}
+                >
+                  {data.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.color || extendedColors[index % extendedColors.length]} 
+                    />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+                {showLegend && <Legend />}
+              </ReChartPie>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

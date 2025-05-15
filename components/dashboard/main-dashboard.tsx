@@ -10,9 +10,10 @@ import { CashDrawerOperations } from './cash-drawer-operations';
 import { SalesChart } from './sales-chart';
 import { InventoryStatusChart } from './inventory-status-chart';
 import { ExpensesBreakdown } from './expenses-breakdown';
+import { TimeFilteredCards } from './time-filtered-cards';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, RefreshCw, Database, AlertCircle } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Import from the proper component files so types match
@@ -62,6 +63,13 @@ interface ExpenseCategory {
   total: number;
 }
 
+interface PeriodSummary {
+  sales: { total: number; count: number };
+  expenses: { total: number; count: number };
+  profit: number;
+  avgTransactionValue: number;
+}
+
 interface DashboardSummary {
   todaySales: { total: number; count: number };
   todayExpenses: { total: number; count: number };
@@ -76,22 +84,20 @@ interface DashboardSummary {
   error?: string;
 }
 
-interface SampleDataResponse {
-  success: boolean;
-  message: string;
-  counts?: {
-    inventory: number;
-    sales: number;
-    expenses: number;
-    cashDrawer: number;
-  };
-}
-
 function MainDashboardContent() {
   const [dashboardData, setDashboardData] = useState<DashboardSummary | null>(null);
   const [expensesByCategory, setExpensesByCategory] = useState<ExpenseCategory[]>([]);
+  const [periodSummary, setPeriodSummary] = useState<PeriodSummary>({
+    sales: { total: 0, count: 0 },
+    expenses: { total: 0, count: 0 },
+    profit: 0,
+    avgTransactionValue: 0
+  });
+  const [netPurchase, setNetPurchase] = useState<{ total: number; count: number }>({
+    total: 0,
+    count: 0
+  });
   const [isLoading, setIsLoading] = useState(true);
-  const [isGeneratingSample, setIsGeneratingSample] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noDataFound, setNoDataFound] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('30');
@@ -115,6 +121,14 @@ function MainDashboardContent() {
       // Fetch additional chart data
       const expensesData = await dashboardService.getExpensesByCategory(parseInt(selectedTimeframe));
       
+      // Fetch period summary data
+      const periodData = await dashboardService.getPeriodSummary(parseInt(selectedTimeframe));
+      setPeriodSummary(periodData);
+      
+      // Fetch net purchase amount
+      const purchaseData = await dashboardService.getNetPurchaseAmount();
+      setNetPurchase(purchaseData);
+      
       // Only use the expensesByCategory data since it's the only one being used in the UI
       setExpensesByCategory(expensesData);
     } catch (err: unknown) {
@@ -125,30 +139,6 @@ function MainDashboardContent() {
     }
   }, [selectedTimeframe]);
 
-  // Function to generate sample data for testing
-  const generateSampleData = async () => {
-    try {
-      setIsGeneratingSample(true);
-      setError(null);
-      
-      // Call the API to generate sample data
-      const result = await dashboardService.generateSampleData() as SampleDataResponse;
-      
-      if (result.success) {
-        // Refresh dashboard data after generating sample data
-        await fetchDashboardData();
-        setNoDataFound(false);
-      } else {
-        setError('Failed to generate sample data');
-      }
-    } catch (err: unknown) {
-      console.error('Error generating sample data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate sample data');
-    } finally {
-      setIsGeneratingSample(false);
-    }
-  };
-
   useEffect(() => {
     fetchDashboardData();
   }, [selectedTimeframe, fetchDashboardData]);
@@ -157,6 +147,20 @@ function MainDashboardContent() {
   const lowStockCount = dashboardData?.inventoryStatus?.find(
     (status) => status._id === 'Low Stock'
   )?.count || 0;
+
+  // Get appropriate label for time period
+  const getDaysLabel = () => {
+    switch (selectedTimeframe) {
+      case '7':
+        return 'Weekly';
+      case '30':
+        return 'Monthly';
+      case '90':
+        return 'Quarterly';
+      default:
+        return `${selectedTimeframe} Days`;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -195,40 +199,8 @@ function MainDashboardContent() {
   if (noDataFound) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
-        <Alert variant="default" className="max-w-2xl mb-4">
-          <AlertCircle className="h-5 w-5" />
-          <AlertTitle>No Dashboard Data Found</AlertTitle>
-          <AlertDescription>
-            Your dashboard is empty. You can generate sample data for testing purposes or start adding real data through the inventory, sales, and expenses modules.
-          </AlertDescription>
-        </Alert>
-        
-        <div className="flex gap-4 mt-4">
-          <Button 
-            onClick={generateSampleData}
-            disabled={isGeneratingSample}
-          >
-            {isGeneratingSample ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Database className="h-4 w-4 mr-2" />
-                Generate Sample Data
-              </>
-            )}
-          </Button>
-          
-          <Button 
-            variant="outline"
-            onClick={fetchDashboardData}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
+
+          <h1>No Dashboard Data Found</h1>
       </div>
     );
   }
@@ -265,8 +237,17 @@ function MainDashboardContent() {
       <StatsCards 
         todaySales={dashboardData?.todaySales || { total: 0, count: 0 }}
         todayExpenses={dashboardData?.todayExpenses || { total: 0, count: 0 }}
-        inventoryValue={dashboardData?.inventoryValue || { totalValue: 0, totalItems: 0 }}
+        netPurchase={netPurchase}
         lowStockCount={lowStockCount}
+      />
+
+      {/* Time-filtered Metrics */}
+      <TimeFilteredCards
+        periodSales={periodSummary.sales}
+        periodExpenses={periodSummary.expenses}
+        periodProfit={periodSummary.profit}
+        avgTransactionValue={periodSummary.avgTransactionValue}
+        daysLabel={getDaysLabel()}
       />
 
       {/* Charts Section */}

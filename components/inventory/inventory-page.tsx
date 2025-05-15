@@ -32,6 +32,7 @@ interface InventoryItem {
   subcategory?: string
   subcategory2?: string
   brand?: string
+  vehicleName?: string
   supplier?: string | { _id: string, name: string }
   location?: string
   purchasePrice?: number
@@ -68,6 +69,7 @@ export function InventoryPage() {
   const [subcategoryFilter, setSubcategoryFilter] = useState("")
   const [subcategory2Filter, setSubcategory2Filter] = useState("")
   const [brandFilter, setBrandFilter] = useState("")
+  const [vehicleNameFilter, setVehicleNameFilter] = useState("")
   const [supplierFilter, setSupplierFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [updateStockDialogOpen, setUpdateStockDialogOpen] = useState(false)
@@ -78,6 +80,7 @@ export function InventoryPage() {
   const [suppliers, setSuppliers] = useState<{_id: string, name: string}[]>([])
   const [subcategories, setSubcategories] = useState<string[]>([])
   const [subcategories2, setSubcategories2] = useState<string[]>([])
+  const [vehicleNames, setVehicleNames] = useState<string[]>([])
 
   // Check if filters are applied
   const isFiltered = useMemo(() => {
@@ -87,10 +90,11 @@ export function InventoryPage() {
       subcategoryFilter || 
       subcategory2Filter || 
       statusFilter || 
-      brandFilter || 
+      brandFilter ||
+      vehicleNameFilter ||
       supplierFilter
     );
-  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, supplierFilter]);
+  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, vehicleNameFilter, supplierFilter]);
 
   // Load inventory data
   const loadInventoryData = useCallback(async () => {
@@ -108,6 +112,7 @@ export function InventoryPage() {
         subcategory2: subcategory2Filter,
         status: statusFilter,
         brand: brandFilter,
+        vehicleName: vehicleNameFilter,
         supplier: supplierFilter
       }
       
@@ -131,15 +136,12 @@ export function InventoryPage() {
         setStatistics(stats as { totalItems: number; lowStockItems: number; outOfStockItems: number; totalValue: number; totalPurchaseValue: number; potentialProfit: number });
       }
       
-      // Load supporting data (categories, brands, suppliers)
+      // Load supporting data (categories)
       const categoriesList = await inventoryService.getCategories()
       setCategories(categoriesList as string[])
       
-      const brandsList = await inventoryService.getBrands()
-      setBrands(brandsList as string[])
-      
-      const suppliersList = await inventoryService.getSuppliers()
-      setSuppliers(suppliersList as {_id: string, name: string}[])
+      // Note: We no longer fetch brands and suppliers here because they are now 
+      // fetched in separate useEffect hooks that respect the selected filters
     } catch (error) {
       console.error("Failed to load inventory data:", error)
       toast({
@@ -150,7 +152,7 @@ export function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, supplierFilter, toast, isFiltered])
+  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, vehicleNameFilter, supplierFilter, toast, isFiltered])
 
   // Load subcategories when category changes
   useEffect(() => {
@@ -194,6 +196,78 @@ export function InventoryPage() {
     }
   }, [categoryFilter, subcategoryFilter, subcategory2Filter]);
 
+  // Load brands for the selected category
+  useEffect(() => {
+    if (user) {
+      // This hook updates the brands list whenever the category or subcategory changes
+      inventoryService.getBrands(categoryFilter || "", subcategoryFilter || "")
+        .then(data => {
+          const brandsData = data as string[];
+          setBrands(brandsData);
+          
+          // Clear brand filter when category changes and brand is not valid for new category
+          if (brandFilter && !brandsData.includes(brandFilter)) {
+            setBrandFilter('');
+          }
+          
+          // Log for debugging
+          console.log(`Loaded ${brandsData.length} brands for category: ${categoryFilter || 'All'}, subcategory: ${subcategoryFilter || 'All'}`);
+        })
+        .catch(error => {
+          console.error("Failed to load brands:", error);
+        });
+    }
+  }, [categoryFilter, subcategoryFilter, brandFilter, user]);
+
+  // Load vehicle names based on category, subcategory, and brand filters
+  useEffect(() => {
+    if (user) {
+      // This hook updates the vehicle names list whenever any of the related filters change
+      inventoryService.getVehicles(categoryFilter || "", subcategoryFilter || "", brandFilter || "")
+        .then(data => {
+          const vehicleNamesData = data as string[];
+          setVehicleNames(vehicleNamesData);
+          
+          // Clear vehicle filter when filters change and vehicle name is not valid for new filters
+          if (vehicleNameFilter && !vehicleNamesData.includes(vehicleNameFilter)) {
+            setVehicleNameFilter('');
+          }
+          
+          // Log for debugging
+          console.log(`Loaded ${vehicleNamesData.length} vehicles for category: ${categoryFilter || 'All'}, brand: ${brandFilter || 'All'}`);
+        })
+        .catch(error => {
+          console.error("Failed to load vehicle names:", error);
+        });
+    }
+  }, [categoryFilter, subcategoryFilter, brandFilter, vehicleNameFilter, user]);
+
+  // Load suppliers based on category, subcategory, and brand filters
+  useEffect(() => {
+    if (user) {
+      // This hook updates the suppliers list whenever any of the related filters change
+      inventoryService.getSuppliers(categoryFilter || "", subcategoryFilter || "", brandFilter || "")
+        .then((data) => {
+          const suppliersData = data as Array<{ _id: string; name: string; }>;
+          setSuppliers(suppliersData);
+          
+          // Clear supplier filter when filters change and supplier is not valid for new filters
+          if (supplierFilter) {
+            const supplierExists = suppliersData.some((supplier) => supplier.name === supplierFilter);
+            if (!supplierExists) {
+              setSupplierFilter('');
+            }
+          }
+          
+          // Log for debugging
+          console.log(`Loaded ${suppliersData.length} suppliers for category: ${categoryFilter || 'All'}, brand: ${brandFilter || 'All'}`);
+        })
+        .catch(error => {
+          console.error("Failed to load suppliers:", error);
+        });
+    }
+  }, [categoryFilter, subcategoryFilter, brandFilter, supplierFilter, user]);
+
   // Initial data load and filter change response (with debounce)
   useEffect(() => {
     if (user) {
@@ -203,7 +277,7 @@ export function InventoryPage() {
       
       return () => clearTimeout(timer)
     }
-  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, supplierFilter, user, loadInventoryData])
+  }, [searchTerm, categoryFilter, subcategoryFilter, subcategory2Filter, statusFilter, brandFilter, vehicleNameFilter, supplierFilter, user, loadInventoryData])
 
   // Load suppliers when needed
   useEffect(() => {
@@ -219,6 +293,26 @@ export function InventoryPage() {
     }
   }, [user]);
 
+  // Verification that the filtering routes are working correctly
+  useEffect(() => {
+    if (user) {
+      // Log when the component mounts
+      console.log("Inventory page mounted - verifying filtering APIs");
+      
+      // Test the brands filter API
+      if (categories.length > 0) {
+        const testCategory = categories[0];
+        inventoryService.getBrands(testCategory, "")
+          .then(data => {
+            console.log(`API test: Found ${(data as string[]).length} brands for category '${testCategory}'`);
+          })
+          .catch(error => {
+            console.error("API test failed: Could not load filtered brands:", error);
+          });
+      }
+    }
+  }, [user, categories]); // Only run when categories list changes or user changes
+
   // Clear all filters
   const clearAllFilters = () => {
     setSearchTerm("");
@@ -227,6 +321,7 @@ export function InventoryPage() {
     setSubcategory2Filter("");
     setStatusFilter("");
     setBrandFilter("");
+    setVehicleNameFilter("");
     setSupplierFilter("");
   };
 
@@ -239,6 +334,7 @@ export function InventoryPage() {
     if (subcategory2Filter) count++;
     if (statusFilter) count++;
     if (brandFilter) count++;
+    if (vehicleNameFilter) count++;
     if (supplierFilter) count++;
     return count;
   };
@@ -258,7 +354,7 @@ export function InventoryPage() {
 
   const handleExport = () => {
     // Create CSV content
-    const headers = ["Name", "SKU", "Category", "Subcategory", "Subcategory2", "Brand", "Supplier", "Stock", "Price", "Purchase Price", "Status", "Location", "Reorder Level"]
+    const headers = ["Name", "SKU", "Category", "Subcategory", "Subcategory2", "Brand", "Vehicle Name", "Supplier", "Stock", "Price", "Purchase Price", "Status", "Location", "Reorder Level"]
     
     // Function to properly escape CSV values
     const escapeCSV = (value: string) => {
@@ -288,6 +384,7 @@ export function InventoryPage() {
         escapeCSV(item.subcategory || ""),
         escapeCSV(item.subcategory2 || ""),
         escapeCSV(item.brand || ""),
+        escapeCSV(item.vehicleName || ""),
         escapeCSV(getSupplierName(item.supplier)),
         escapeCSV(item.stock.toString()),
         escapeCSV(item.price.toFixed(2)),
@@ -404,7 +501,8 @@ export function InventoryPage() {
         </div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+        {/* First Row - 4 cards */}
         <Card className={`bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background transition-all duration-300 ${isFiltered ? 'shadow-md ring-1 ring-blue-100 dark:ring-blue-900/30' : 'shadow-sm'}`}>
           <CardContent className="p-4">
             <div className="flex flex-col space-y-1">
@@ -418,6 +516,25 @@ export function InventoryPage() {
                     </span>
                   )}
                   <Package className="h-5 w-5 text-blue-500 mb-1" />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className={`bg-gradient-to-br from-red-50 to-white dark:from-red-950/20 dark:to-background transition-all duration-300 ${isFiltered ? 'shadow-md ring-1 ring-red-100 dark:ring-red-900/30' : 'shadow-sm'}`}>
+          <CardContent className="p-4">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm text-muted-foreground">Out of Stock</p>
+              <div className="flex items-end justify-between">
+                <h3 className="text-2xl font-bold transition-all duration-300">{statistics.outOfStockItems}</h3>
+                <div className="flex items-center gap-2">
+                  {isFiltered && globalStatistics.outOfStockItems > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      of {globalStatistics.outOfStockItems}
+                    </span>
+                  )}
+                  <AlertCircle className="h-5 w-5 text-red-500 mb-1" />
                 </div>
               </div>
             </div>
@@ -443,16 +560,36 @@ export function InventoryPage() {
           </CardContent>
         </Card>
         
+        <Card className={`bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-background transition-all duration-300 ${isFiltered ? 'shadow-md ring-1 ring-indigo-100 dark:ring-indigo-900/30' : 'shadow-sm'}`}>
+          <CardContent className="p-4">
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm text-muted-foreground">Net Purchase</p>
+              <div className="flex items-end justify-between">
+                <h3 className="text-2xl font-bold transition-all duration-300">Rs {statistics.totalPurchaseValue.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
+                <div className="flex items-center gap-2">
+                  {isFiltered && globalStatistics.totalPurchaseValue > 0 && (
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      of Rs {globalStatistics.totalPurchaseValue.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                    </span>
+                  )}
+                  <DollarSign className="h-5 w-5 text-indigo-500 mb-1" />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Second Row - 4 additional cards */}
         <Card className={`bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background transition-all duration-300 ${isFiltered ? 'shadow-md ring-1 ring-green-100 dark:ring-green-900/30' : 'shadow-sm'}`}>
           <CardContent className="p-4">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm text-muted-foreground">Total Value</p>
+              <p className="text-sm text-muted-foreground">Net Sale</p>
               <div className="flex items-end justify-between">
-                <h3 className="text-2xl font-bold transition-all duration-300">Rs  {statistics.totalValue.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
+                <h3 className="text-2xl font-bold transition-all duration-300">Rs {statistics.totalValue.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
                 <div className="flex items-center gap-2">
                   {isFiltered && globalStatistics.totalValue > 0 && (
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      of Rs  {globalStatistics.totalValue.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                      of Rs {globalStatistics.totalValue.toLocaleString(undefined, {maximumFractionDigits: 0})}
                     </span>
                   )}
                   <DollarSign className="h-5 w-5 text-green-500 mb-1" />
@@ -465,13 +602,13 @@ export function InventoryPage() {
         <Card className={`bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background transition-all duration-300 ${isFiltered ? 'shadow-md ring-1 ring-purple-100 dark:ring-purple-900/30' : 'shadow-sm'}`}>
           <CardContent className="p-4">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm text-muted-foreground">Potential Profit</p>
+              <p className="text-sm text-muted-foreground">Net Profit</p>
               <div className="flex items-end justify-between">
-                <h3 className="text-2xl font-bold transition-all duration-300">Rs  {statistics.potentialProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
+                <h3 className="text-2xl font-bold transition-all duration-300">Rs {statistics.potentialProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}</h3>
                 <div className="flex items-center gap-2">
                   {isFiltered && globalStatistics.potentialProfit > 0 && (
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      of Rs  {globalStatistics.potentialProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                      of Rs {globalStatistics.potentialProfit.toLocaleString(undefined, {maximumFractionDigits: 0})}
                     </span>
                   )}
                   <TrendingUp className="h-5 w-5 text-purple-500 mb-1" />
@@ -589,7 +726,8 @@ export function InventoryPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 w-full md:w-auto">
             {/* Category filter */}
             {categories.length > 0 && (
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Category</label>
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   value={categoryFilter}
@@ -605,9 +743,10 @@ export function InventoryPage() {
               </div>
             )}
             
-            {/* Subcategory filter */}
+            {/* Subcategory filter - Only shown when category is selected */}
             {categoryFilter && (
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Subcategory</label>
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   value={subcategoryFilter}
@@ -621,12 +760,16 @@ export function InventoryPage() {
                     </option>
                   ))}
                 </select>
+                <span className="text-xs text-muted-foreground mt-1 ml-1">
+                  Filtered by {categoryFilter}
+                </span>
               </div>
             )}
             
-            {/* Subcategory2 filter */}
+            {/* Subcategory2 filter - Only shown when subcategory is selected */}
             {subcategoryFilter && (
-              <div className="flex gap-2 items-center">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Subcategory 2</label>
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   value={subcategory2Filter}
@@ -640,12 +783,16 @@ export function InventoryPage() {
                     </option>
                   ))}
                 </select>
+                <span className="text-xs text-muted-foreground mt-1 ml-1">
+                  Filtered by {subcategoryFilter}
+                </span>
               </div>
             )}
             
             {/* Brand filter */}
-            {brands.length > 0 && (
-              <div className="flex gap-2 items-center">
+            {brands.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Brand</label>
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   value={brandFilter}
@@ -658,12 +805,67 @@ export function InventoryPage() {
                     </option>
                   ))}
                 </select>
+                {categoryFilter && (
+                  <span className="text-xs text-muted-foreground mt-1 ml-1">
+                    Filtered by {categoryFilter}
+                    {subcategoryFilter && ` > ${subcategoryFilter}`}
+                  </span>
+                )}
               </div>
-            )}
+            ) : categoryFilter ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Brand</label>
+                <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground flex items-center justify-center">
+                  No brands available for {categoryFilter}
+                </div>
+                <span className="text-xs text-muted-foreground mt-1 ml-1">
+                  Try selecting a different category
+                </span>
+              </div>
+            ) : null}
+            
+            {/* Vehicle Name filter */}
+            {vehicleNames.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Vehicle</label>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  value={vehicleNameFilter}
+                  onChange={(e) => setVehicleNameFilter(e.target.value)}
+                >
+                  <option value="">All Vehicles</option>
+                  {vehicleNames.map((vehicle) => (
+                    <option key={vehicle} value={vehicle}>
+                      {vehicle}
+                    </option>
+                  ))}
+                </select>
+                {(categoryFilter || brandFilter) && (
+                  <span className="text-xs text-muted-foreground mt-1 ml-1">
+                    Filtered by{' '}
+                    {[
+                      categoryFilter && `category: ${categoryFilter}`,
+                      brandFilter && `brand: ${brandFilter}`
+                    ].filter(Boolean).join(', ')}
+                  </span>
+                )}
+              </div>
+            ) : (categoryFilter || brandFilter) ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Vehicle</label>
+                <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground flex items-center justify-center">
+                  No vehicles available for selected filters
+                </div>
+                <span className="text-xs text-muted-foreground mt-1 ml-1">
+                  Try adjusting your filters
+                </span>
+              </div>
+            ) : null}
             
             {/* Supplier filter */}
-            {suppliers.length > 0 && (
-              <div className="flex gap-2 items-center">
+            {suppliers.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Supplier</label>
                 <select
                   className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   value={supplierFilter}
@@ -676,11 +878,27 @@ export function InventoryPage() {
                     </option>
                   ))}
                 </select>
+                {categoryFilter && (
+                  <span className="text-xs text-muted-foreground mt-1 ml-1">
+                    Filtered by {categoryFilter}
+                  </span>
+                )}
               </div>
-            )}
+            ) : categoryFilter ? (
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground mb-1 ml-1">Supplier</label>
+                <div className="h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground flex items-center justify-center">
+                  No suppliers available for {categoryFilter}
+                </div>
+                <span className="text-xs text-muted-foreground mt-1 ml-1">
+                  Try selecting a different category
+                </span>
+              </div>
+            ) : null}
             
             {/* Status filter */}
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground mb-1 ml-1">Status</label>
               <select
                 className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                 value={statusFilter}
@@ -716,7 +934,9 @@ export function InventoryPage() {
                             <span>Item Name</span>
                             <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                           </div>
+
                         </TableHead>
+                        <TableHead>Vehicle</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Brand</TableHead>
                         <TableHead className="text-right">Stock</TableHead>
@@ -740,6 +960,9 @@ export function InventoryPage() {
                             </div>
                           </TableCell>
                           <TableCell>
+                            {item.vehicleName || '-'}
+                          </TableCell>
+                          <TableCell>
                             <div className="flex flex-col">
                               <span>{item.category}</span>
                               {(item.subcategory || item.subcategory2) && (
@@ -753,6 +976,11 @@ export function InventoryPage() {
                           </TableCell>
                           <TableCell>
                             {item.brand || '-'}
+                            {item.vehicleName && (
+                              <div className="text-xs text-muted-foreground">
+                                Vehicle: {item.vehicleName}
+                              </div>
+                            )}
                             {item.supplier && (
                               <div className="text-xs text-muted-foreground">
                                 Supplier: {getSupplierName(item.supplier)}

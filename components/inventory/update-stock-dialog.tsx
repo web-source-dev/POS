@@ -37,6 +37,7 @@ interface InventoryItem {
   expiryDate?: string | Date
   unitOfMeasure?: string
   measureValue?: string
+  vehicleName?: string
 }
 
 interface UpdateStockDialogProps {

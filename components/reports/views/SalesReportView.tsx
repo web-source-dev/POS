@@ -94,7 +94,7 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
         // Process sales data
         if (salesResponse && salesResponse.success) {
           // Get sales data for charts
-          if (salesResponse.data) {
+          if (salesResponse.data && Array.isArray(salesResponse.data) && salesResponse.data.length > 0) {
             // Store the raw sales data for detailed views
             setSalesResponseData(salesResponse.data as SalesDataRecord[]);
             
@@ -209,6 +209,13 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
               return indexB - indexA;
             });
             setMonthlySalesData(processedMonthlyData);
+          } else {
+            // If no sales data found, set empty arrays
+            setSalesResponseData([]);
+            setDailySalesData([]);
+            setWeeklySalesData([]);
+            setMonthlySalesData([]);
+            setSalesData([]);
           }
           
           // Set summary data
@@ -219,11 +226,32 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
               totalItems: salesResponse.summary.totalItems || 0,
               averageTransaction: parseFloat(salesResponse.summary.averageTransaction) || 0,
             });
+          } else {
+            // Reset summary if not available
+            setSummary({
+              totalSales: 0,
+              totalTransactions: 0,
+              totalItems: 0,
+              averageTransaction: 0,
+            });
           }
+        } else {
+          // Reset all data if response not successful
+          setSalesResponseData([]);
+          setDailySalesData([]);
+          setWeeklySalesData([]);
+          setMonthlySalesData([]);
+          setSalesData([]);
+          setSummary({
+            totalSales: 0,
+            totalTransactions: 0,
+            totalItems: 0,
+            averageTransaction: 0,
+          });
         }
         
         // Process category data
-        if (categoryResponse && categoryResponse.success && categoryResponse.data) {
+        if (categoryResponse && categoryResponse.success && categoryResponse.data && Array.isArray(categoryResponse.data) && categoryResponse.data.length > 0) {
           setCategoryData(
             (categoryResponse.data as CategoryDataRecord[]).map((item) => ({
               category: item.category,
@@ -231,6 +259,9 @@ const SalesReportView: FC<SalesReportViewProps> = ({ dateRange }) => {
               percentage: parseFloat(item.percentage)
             }))
           );
+        } else {
+          // Reset category data if not available
+          setCategoryData([]);
         }
       } catch (error) {
         console.error('Error fetching sales report data:', error);

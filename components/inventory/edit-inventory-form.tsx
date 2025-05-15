@@ -36,6 +36,7 @@ interface InventoryItem {
   subcategory?: string
   subcategory2?: string
   brand?: string
+  vehicleName?: string
   barcode?: string
   stock: number
   price: number
@@ -89,6 +90,7 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
     subcategory: "",
     subcategory2: "",
     brand: "",
+    vehicleName: "",
     price: "",
     description: "",
     
@@ -170,6 +172,7 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
           subcategory: itemData.subcategory || "",
           subcategory2: itemData.subcategory2 || "",
           brand: itemData.brand || "",
+          vehicleName: itemData.vehicleName || "",
           price: itemData.price.toString(),
           stock: itemData.stock.toString(),
           description: itemData.description || "",
@@ -362,7 +365,8 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
         subcategory: formData.subcategory,
         subcategory2: formData.subcategory2,
         brand: formData.brand,
-        supplier: formData.supplier,
+        vehicleName: formData.vehicleName,
+        supplier: formData.supplier ? formData.supplier : null,
         price: Number(formData.price),
         purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : undefined,
         stock: Number(formData.stock),
@@ -800,6 +804,20 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
                   )}
                 </div>
                 
+                <div className="space-y-2">
+                  <Label htmlFor="vehicleName" className="font-medium">
+                    Vehicle Name
+                  </Label>
+                  <Input
+                    id="vehicleName"
+                    name="vehicleName"
+                    value={formData.vehicleName}
+                    onChange={handleChange}
+                    className="w-full shadow-sm"
+                    placeholder="e.g., Toyota Corolla, Honda Civic"
+                  />
+                </div>
+                
                 <div className="col-span-2 space-y-2">
                   <Label htmlFor="description" className="font-medium">
                     Description
@@ -920,7 +938,7 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
               <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="price" className="font-medium flex gap-1">
-                    Selling Price (Rs) <span className="text-red-500">*</span>
+                    Selling Price per item (Rs) <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="price"
@@ -937,7 +955,7 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
                 
                 <div className="space-y-2">
                   <Label htmlFor="purchasePrice" className="font-medium">
-                    Purchase Price (Rs)
+                    Purchase Price per item (Rs)
                   </Label>
                   <Input
                     id="purchasePrice"
@@ -954,7 +972,7 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
                 
                 <div className="space-y-2">
                   <Label htmlFor="taxRate" className="font-medium">
-                    Tax Rate (%)
+                    Tax Rate per item (%)
                   </Label>
                   <Input
                     id="taxRate"
@@ -1053,13 +1071,20 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
                     <option value="pair">Pair</option>
                     <option value="set">Set</option>
                     <option value="case">Case</option>
+                    <option value="std">STD</option>
                   </select>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="measureValue" className="font-medium">
-                    {getMeasureLabel(formData.unitOfMeasure)}
-                  </Label>
+                  {formData.unitOfMeasure === "std" ? (
+                    <Label htmlFor="measureValue" className="font-medium">
+                      Standard Unit
+                    </Label>
+                  ) : (
+                    <>
+                      <Label htmlFor="measureValue" className="font-medium">
+                        {getMeasureLabel(formData.unitOfMeasure)}
+                      </Label>
                   <div className="flex items-center gap-2">
                     <Input
                       id="measureValue"
@@ -1076,6 +1101,8 @@ export function EditInventoryForm({ itemId }: EditInventoryFormProps) {
                       {getMeasureUnit(formData.unitOfMeasure)}
                     </span>
                   </div>
+                  </>
+                )}
                 </div>
               </div>
             </TabsContent>

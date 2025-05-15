@@ -31,6 +31,7 @@ interface InventoryItem {
   subcategory?: string
   subcategory2?: string
   brand?: string
+  vehicleName?: string
   supplier?: { _id: string, name: string, contact?: string, email?: string, phone?: string }
   stock: number
   price: number
@@ -313,6 +314,13 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Brand</h3>
                   <p className="font-medium">{item?.brand || "Not specified"}</p>
                 </div>
+                
+                {item?.vehicleName && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Vehicle Name</h3>
+                    <p className="font-medium">{item.vehicleName}</p>
+                  </div>
+                )}
                 
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Current Stock</h3>

@@ -82,67 +82,93 @@ const FinancialReportView: FC<FinancialReportViewProps> = ({ dateRange }) => {
             profitMargin: parseFloat(responseData.profitMargin) || 0,
           });
           
-          // Generate time-based data for the chart
-          // Monthly data (12 months)
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const currentMonth = new Date().getMonth();
-          const currentYear = new Date().getFullYear();
-          
-          // Generate monthly data
-          const mockMonthlyData = months.map((month, index) => {
-            // Create growth factors that are somewhat realistic
-            const monthIndex = index;
-            const multiplier = monthIndex <= currentMonth 
-              ? 0.7 + (monthIndex / 10) // Current year months with growth
-              : 0.5 + (monthIndex / 15); // Previous year months (smaller numbers)
+          // Check if there are actual financial figures before generating time series data
+          const hasFinancialData = 
+            parseFloat(responseData.revenue) > 0 || 
+            parseFloat(responseData.expenses) > 0 || 
+            parseFloat(responseData.profit) > 0;
             
-            const revenue = parseFloat(responseData.revenue) * multiplier / 12;
-            const expenses = parseFloat(responseData.expenses) * multiplier / 12;
+          if (hasFinancialData) {
+            // Only generate time-based data if we have actual financial data
+            // Monthly data (12 months)
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
             
-            return {
-              period: `${month} ${currentYear}`,
-              revenue: revenue,
-              expenses: expenses,
-              profit: revenue - expenses
-            };
+            // Generate monthly data
+            const mockMonthlyData = months.map((month, index) => {
+              // Create growth factors that are somewhat realistic
+              const monthIndex = index;
+              const multiplier = monthIndex <= currentMonth 
+                ? 0.7 + (monthIndex / 10) // Current year months with growth
+                : 0.5 + (monthIndex / 15); // Previous year months (smaller numbers)
+              
+              const revenue = parseFloat(responseData.revenue) * multiplier / 12;
+              const expenses = parseFloat(responseData.expenses) * multiplier / 12;
+              
+              return {
+                period: `${month} ${currentYear}`,
+                revenue: revenue,
+                expenses: expenses,
+                profit: revenue - expenses
+              };
+            });
+            
+            setMonthlyData(mockMonthlyData);
+            setFinancialData(mockMonthlyData);
+            
+            // Generate quarterly data
+            const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+            const mockQuarterlyData = quarters.map((quarter, index) => {
+              const multiplier = 0.7 + (index / 5);
+              const revenue = parseFloat(responseData.revenue) * multiplier / 4;
+              const expenses = parseFloat(responseData.expenses) * multiplier / 4;
+              
+              return {
+                period: `${quarter} ${currentYear}`,
+                revenue: revenue,
+                expenses: expenses,
+                profit: revenue - expenses
+              };
+            });
+            
+            setQuarterlyData(mockQuarterlyData);
+            
+            // Generate yearly data
+            const years = [currentYear - 2, currentYear - 1, currentYear];
+            const mockYearlyData = years.map((year, index) => {
+              const multiplier = 0.6 + (index / 2); // Growth over years
+              const revenue = parseFloat(responseData.revenue) * multiplier / 3;
+              const expenses = parseFloat(responseData.expenses) * multiplier / 3;
+              
+              return {
+                period: year.toString(),
+                revenue: revenue,
+                expenses: expenses,
+                profit: revenue - expenses
+              };
+            });
+            
+            setYearlyData(mockYearlyData);
+          } else {
+            // If no financial data, set empty arrays
+            setMonthlyData([]);
+            setQuarterlyData([]);
+            setYearlyData([]);
+            setFinancialData([]);
+          }
+        } else {
+          // If no valid response, set empty arrays
+          setMonthlyData([]);
+          setQuarterlyData([]);
+          setYearlyData([]);
+          setFinancialData([]);
+          setSummary({
+            totalRevenue: 0,
+            totalExpenses: 0,
+            totalProfit: 0,
+            profitMargin: 0,
           });
-          
-          setMonthlyData(mockMonthlyData);
-          setFinancialData(mockMonthlyData);
-          
-          // Generate quarterly data
-          const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-          const mockQuarterlyData = quarters.map((quarter, index) => {
-            const multiplier = 0.7 + (index / 5);
-            const revenue = parseFloat(responseData.revenue) * multiplier / 4;
-            const expenses = parseFloat(responseData.expenses) * multiplier / 4;
-            
-            return {
-              period: `${quarter} ${currentYear}`,
-              revenue: revenue,
-              expenses: expenses,
-              profit: revenue - expenses
-            };
-          });
-          
-          setQuarterlyData(mockQuarterlyData);
-          
-          // Generate yearly data
-          const years = [currentYear - 2, currentYear - 1, currentYear];
-          const mockYearlyData = years.map((year, index) => {
-            const multiplier = 0.6 + (index / 2); // Growth over years
-            const revenue = parseFloat(responseData.revenue) * multiplier / 3;
-            const expenses = parseFloat(responseData.expenses) * multiplier / 3;
-            
-            return {
-              period: year.toString(),
-              revenue: revenue,
-              expenses: expenses,
-              profit: revenue - expenses
-            };
-          });
-          
-          setYearlyData(mockYearlyData);
         }
         
         // Process expense data for the chart
@@ -163,10 +189,18 @@ const FinancialReportView: FC<FinancialReportViewProps> = ({ dateRange }) => {
               percentage: parseFloat(item.percentage)
             }))
           );
+        } else {
+          // If no valid expense data, set empty array
+          setExpenseData([]);
         }
       } catch (error) {
         console.error('Error fetching financial report data:', error);
-      } finally {
+        // Set empty arrays in case of error
+        setMonthlyData([]);
+        setQuarterlyData([]);
+        setYearlyData([]);
+        setFinancialData([]);
+        setExpenseData([]);
       }
     };
 

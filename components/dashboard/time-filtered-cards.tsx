@@ -8,34 +8,33 @@ import {
   TrendingDown, 
   DollarSign, 
   CreditCard, 
+  BarChart4,
+  ShoppingBag
 } from "lucide-react";
 
-interface StatsCardsProps {
-  todaySales: {
+interface TimeFilteredCardsProps {
+  periodSales: {
     total: number;
     count: number;
   };
-  todayExpenses: {
+  periodExpenses: {
     total: number;
     count: number;
   };
-  netPurchase: {
-    total: number;
-    count: number;
-  };
-  lowStockCount: number;
+  periodProfit: number;
+  avgTransactionValue: number;
+  daysLabel: string;
 }
 
-export function StatsCards({
-  todaySales,
-  todayExpenses,
-  netPurchase,
-  lowStockCount
-}: StatsCardsProps) {
+export function TimeFilteredCards({
+  periodSales,
+  periodExpenses,
+  periodProfit,
+  avgTransactionValue,
+  daysLabel
+}: TimeFilteredCardsProps) {
   const router = useRouter();
-  // Calculate daily profit
-  const dailyProfit = todaySales.total - todayExpenses.total;
-  const isProfitPositive = dailyProfit >= 0;
+  const isProfitPositive = periodProfit >= 0;
 
   const handleCardClick = (path: string) => {
     router.push(path);
@@ -43,47 +42,47 @@ export function StatsCards({
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {/* Today's Sales Card */}
+      {/* Period Sales Card */}
       <Card 
         className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
         onClick={() => handleCardClick("/purchases")}
       >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Today&apos;s Sales</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">{daysLabel} Sales</CardTitle>
+          <ShoppingBag className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(todaySales.total)}</div>
+          <div className="text-2xl font-bold">{formatCurrency(periodSales.total)}</div>
           <p className="text-xs text-muted-foreground">
-            {todaySales.count} transaction{todaySales.count !== 1 ? 's' : ''}
+            {periodSales.count} transaction{periodSales.count !== 1 ? 's' : ''}
           </p>
         </CardContent>
       </Card>
 
-      {/* Today's Expenses Card */}
+      {/* Period Expenses Card */}
       <Card 
         className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
         onClick={() => handleCardClick("/accounting")}
       >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Today&apos;s Expenses</CardTitle>
+          <CardTitle className="text-sm font-medium">{daysLabel} Expenses</CardTitle>
           <CreditCard className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(todayExpenses.total)}</div>
+          <div className="text-2xl font-bold">{formatCurrency(periodExpenses.total)}</div>
           <p className="text-xs text-muted-foreground">
-            {todayExpenses.count} transaction{todayExpenses.count !== 1 ? 's' : ''}
+            {periodExpenses.count} transaction{periodExpenses.count !== 1 ? 's' : ''}
           </p>
         </CardContent>
       </Card>
 
-      {/* Today's Profit Card */}
+      {/* Period Profit Card */}
       <Card 
         className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
-        onClick={() => handleCardClick("/today")}
+        onClick={() => handleCardClick("/reports/financial")}
       >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Today&apos;s Profit</CardTitle>
+          <CardTitle className="text-sm font-medium">{daysLabel} Profit</CardTitle>
           {isProfitPositive ? (
             <TrendingUp className="h-4 w-4 text-green-500" />
           ) : (
@@ -92,33 +91,30 @@ export function StatsCards({
         </CardHeader>
         <CardContent>
           <div className={`text-2xl font-bold ${isProfitPositive ? 'text-green-500' : 'text-red-500'}`}>
-            {formatCurrency(dailyProfit)}
+            {formatCurrency(periodProfit)}
           </div>
           <p className="text-xs text-muted-foreground">
-            From {todaySales.count} sales & {todayExpenses.count} expenses
+            {isProfitPositive ? 'Profit' : 'Loss'} margin: {Math.abs(
+              periodSales.total ? Math.round((periodProfit / periodSales.total) * 100) : 0
+            )}%
           </p>
         </CardContent>
       </Card>
 
-      {/* Net Purchases Card */}
+      {/* Average Transaction Value Card */}
       <Card 
         className="cursor-pointer transition-all hover:shadow-md hover:scale-105"
-        onClick={() => handleCardClick("/inventory")}
+        onClick={() => handleCardClick("/reports/sales")}
       >
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Inventory</CardTitle>
-         
+          <CardTitle className="text-sm font-medium">Avg Transaction</CardTitle>
+          <BarChart4 className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(netPurchase.total)}</div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{netPurchase.count} purchase{netPurchase.count !== 1 ? 's' : ''}</span>
-            {lowStockCount > 0 && (
-              <span className="text-red-500 font-medium">
-                {lowStockCount} low stock
-              </span>
-            )}
-          </div>
+          <div className="text-2xl font-bold">{formatCurrency(avgTransactionValue)}</div>
+          <p className="text-xs text-muted-foreground">
+            Based on {periodSales.count} sales
+          </p>
         </CardContent>
       </Card>
     </div>

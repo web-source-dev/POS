@@ -98,64 +98,71 @@ const FinancialChart: FC<FinancialChartProps> = ({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={data}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 30,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="period" 
-                tick={{ fontSize: 12 }}
-                interval={0}
-                angle={data.length > 8 ? -45 : 0}
-                textAnchor={data.length > 8 ? 'end' : 'middle'}
-                height={data.length > 8 ? 60 : 30}
-              />
-              <YAxis 
-                tickFormatter={formatCurrency}
-                domain={[0, maxValue * 1.1]}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              {showRevenue && (
-                <Bar 
-                  dataKey="revenue" 
-                  name="Revenue" 
-                  fill="#4CAF50" 
-                  barSize={30}
-                  radius={[4, 4, 0, 0]}
+        {!data || data.length === 0 ? (
+          <div className="h-[400px] flex items-center justify-center flex-col">
+            <p className="text-lg text-muted-foreground">No financial data available</p>
+            <p className="text-sm text-muted-foreground">No transactions found for this time period</p>
+          </div>
+        ) : (
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={data}
+                margin={{
+                  top: 20,
+                  right: 30,
+                  left: 20,
+                  bottom: 30,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="period" 
+                  tick={{ fontSize: 12 }}
+                  interval={0}
+                  angle={data.length > 8 ? -45 : 0}
+                  textAnchor={data.length > 8 ? 'end' : 'middle'}
+                  height={data.length > 8 ? 60 : 30}
                 />
-              )}
-              {showExpenses && (
-                <Bar 
-                  dataKey="expenses" 
-                  name="Expenses" 
-                  fill="#FF5722" 
-                  barSize={30}
-                  radius={[4, 4, 0, 0]}
+                <YAxis 
+                  tickFormatter={formatCurrency}
+                  domain={[0, maxValue * 1.1]}
+                  tick={{ fontSize: 12 }}
                 />
-              )}
-              {showProfit && (
-                <Line 
-                  type="monotone" 
-                  dataKey="profit" 
-                  name="Net Profit" 
-                  stroke="#2196F3" 
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                />
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                {showRevenue && (
+                  <Bar 
+                    dataKey="revenue" 
+                    name="Revenue" 
+                    fill="#4CAF50" 
+                    barSize={30}
+                    radius={[4, 4, 0, 0]}
+                  />
+                )}
+                {showExpenses && (
+                  <Bar 
+                    dataKey="expenses" 
+                    name="Expenses" 
+                    fill="#FF5722" 
+                    barSize={30}
+                    radius={[4, 4, 0, 0]}
+                  />
+                )}
+                {showProfit && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="profit" 
+                    name="Net Profit" 
+                    stroke="#2196F3" 
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

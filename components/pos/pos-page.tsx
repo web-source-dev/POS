@@ -10,10 +10,11 @@ import {
   ShoppingCart,
   Trash,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -41,6 +42,10 @@ type InventoryItem = {
   price: number
   stock: number
   status: string
+  brand?: string
+  vehicleName?: string
+  subcategory?: string
+  purchasePrice?: number
 }
 
 type CartItem = {
@@ -108,6 +113,10 @@ export function POSPage() {
   const [discountAmount, setDiscountAmount] = useState("")
   const [businessSettings, setBusinessSettings] = useState<BusinessSettings | null>(null)
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(50)
+
   const [cart, setCart] = useState<CartItem[]>([])
   const [cashAmount, setCashAmount] = useState("")
   const [change, setChange] = useState<number | null>(null)
@@ -406,11 +415,41 @@ export function POSPage() {
   const discount = parseFloat(discountAmount) || 0
   const total = Math.max(0, subtotal - discount)
 
+  // Filter items based on search term
   const filteredItems = inventoryItems.filter(
     (item) =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchTerm.toLowerCase()),
+      item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.brand && item.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.vehicleName && item.vehicleName.toLowerCase().includes(searchTerm.toLowerCase()))
   )
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
+  
+  // Get current items for the page
+  const indexOfLastItem = currentPage * itemsPerPage
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem)
+
+  // Page navigation functions
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1)
+    }
+  }
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   if (isLoading) {
     return (
@@ -425,17 +464,17 @@ export function POSPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] lg:h-screen flex-col lg:flex-row">
       {/* Product Selection Area */}
-      <div className="flex-1 p-4 md:p-6 overflow-auto">
+      <div className="flex-1 p-4 md:p-6 overflow-auto relative">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold">Point of Sale</h2>
         </div>
 
-        <div className="mb-4">
+        <div className="sticky top-0 z-10 bg-background pb-2 pt-1">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search products by name or SKU..."
+              placeholder="Search products by name, SKU, category, brand, vehicle..."
               className="pl-8"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -455,7 +494,7 @@ export function POSPage() {
 
           <TabsContent value="all" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredItems.map((item) => (
+              {currentItems.map((item) => (
                 <Card
                   key={item._id}
                   className={`cursor-pointer hover:bg-muted/50 transition-colors ${
@@ -464,34 +503,111 @@ export function POSPage() {
                   onClick={() => item.stock > 0 && addToCart(item)}
                 >
                   <CardHeader className="p-4 pb-2">
-                    <CardTitle className="text-base">{item.name}</CardTitle>
+                    <CardTitle className="text-base">
+                      <div className="flex justify-between items-center">
+                        <span>{item.name}</span>
+                        <Button 
+                          size="sm" 
+                          variant="secondary" 
+                          disabled={item.stock <= 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            item.stock > 0 && addToCart(item);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Add
+                        </Button>
+                      </div>
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 pt-0 pb-2">
-                    <p className="text-sm text-muted-foreground">{item.sku}</p>
-                    <div className="flex justify-between mt-1">
-                      <Badge>{item.category}</Badge>
-                      <Badge variant={item.status === 'In Stock' ? 'outline' : 'destructive'}>
-                        {item.stock} in stock
-                      </Badge>
+                  <CardContent className="p-4 pt-0 pb-3">
+                    <div className="text-sm space-y-1">
+                      <div className="flex">
+                        <span className="w-24 font-medium text-muted-foreground">SKU:</span>
+                        <span>{item.sku}</span>
+                      </div>
+                      
+                      {item.brand && (
+                        <div className="flex">
+                          <span className="w-24 font-medium text-muted-foreground">Brand:</span>
+                          <span>{item.brand}</span>
+                        </div>
+                      )}
+                      
+                      {item.vehicleName && (
+                        <div className="flex">
+                          <span className="w-24 font-medium text-muted-foreground">Vehicle:</span>
+                          <span>{item.vehicleName}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex">
+                        <span className="w-24 font-medium text-muted-foreground">Category:</span>
+                        <span>{item.category}</span>
+                      </div>
+                      
+                      <div className="flex">
+                        <span className="w-24 font-medium text-muted-foreground">Stock:</span>
+                        <span className={`${item.status === 'Low Stock' || item.stock <= 5 ? 'text-amber-500' : (item.stock <= 0 ? 'text-red-500' : 'text-green-500')}`}>
+                          {item.stock} ({item.status})
+                        </span>
+                      </div>
+                      
+                      <div className="flex">
+                        <span className="w-24 font-medium text-muted-foreground">Price:</span>
+                        <span className="font-bold">Rs {item.price.toFixed(2)}</span>
+                      </div>
+                      
+                      {item.purchasePrice && (
+                        <div className="flex">
+                          <span className="w-24 font-medium text-muted-foreground">Cost Price:</span>
+                          <span>Rs {item.purchasePrice.toFixed(2)}</span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
-                  <CardFooter className="p-4 pt-2 flex justify-between items-center">
-                    <p className="font-bold">Rs {item.price.toFixed(2)}</p>
-                    <Button size="sm" variant="secondary" disabled={item.stock <= 0}>
-                      <Plus className="h-4 w-4 mr-1" /> Add
-                    </Button>
-                  </CardFooter>
                 </Card>
               ))}
             </div>
+            
+            {/* Pagination UI */}
+            <div className="flex justify-between items-center mt-6 mb-2">
+              <div className="text-sm text-muted-foreground">
+                Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredItems.length)} of {filteredItems.length} items
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={goToPreviousPage} 
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={goToNextPage} 
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </TabsContent>
 
-          {categories.map((category) => (
-            <TabsContent key={category.id} value={`cat-${category.id}`} className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredItems
-                  .filter((item) => item.category === category.name)
-                  .map((item) => (
+          {categories.map((category) => {
+            const categoryItems = filteredItems.filter((item) => item.category === category.name)
+            const categoryTotalPages = Math.ceil(categoryItems.length / itemsPerPage)
+            const categoryCurrentItems = categoryItems.slice(indexOfFirstItem, indexOfLastItem)
+            
+            return (
+              <TabsContent key={category.id} value={`cat-${category.id}`} className="mt-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categoryCurrentItems.map((item) => (
                     <Card
                       key={item._id}
                       className={`cursor-pointer hover:bg-muted/50 transition-colors ${
@@ -500,25 +616,98 @@ export function POSPage() {
                       onClick={() => item.stock > 0 && addToCart(item)}
                     >
                       <CardHeader className="p-4 pb-2">
-                        <CardTitle className="text-base">{item.name}</CardTitle>
+                        <CardTitle className="text-base">
+                          <div className="flex justify-between items-center">
+                            <span>{item.name}</span>
+                            <Button 
+                              size="sm" 
+                              variant="secondary" 
+                              disabled={item.stock <= 0}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                item.stock > 0 && addToCart(item);
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-1" /> Add
+                            </Button>
+                          </div>
+                        </CardTitle>
                       </CardHeader>
-                      <CardContent className="p-4 pt-0 pb-2">
-                        <p className="text-sm text-muted-foreground">{item.sku}</p>
-                        <Badge variant={item.status === 'In Stock' ? 'outline' : 'destructive'} className="mt-1">
-                          {item.stock} in stock
-                        </Badge>
+                      <CardContent className="p-4 pt-0 pb-3">
+                        <div className="text-sm space-y-1">
+                          <div className="flex">
+                            <span className="w-24 font-medium text-muted-foreground">SKU:</span>
+                            <span>{item.sku}</span>
+                          </div>
+                          
+                          {item.brand && (
+                            <div className="flex">
+                              <span className="w-24 font-medium text-muted-foreground">Brand:</span>
+                              <span>{item.brand}</span>
+                            </div>
+                          )}
+                          
+                          {item.vehicleName && (
+                            <div className="flex">
+                              <span className="w-24 font-medium text-muted-foreground">Vehicle:</span>
+                              <span>{item.vehicleName}</span>
+                            </div>
+                          )}
+                          
+                          <div className="flex">
+                            <span className="w-24 font-medium text-muted-foreground">Stock:</span>
+                            <span className={`${item.status === 'Low Stock' || item.stock <= 5 ? 'text-amber-500' : (item.stock <= 0 ? 'text-red-500' : 'text-green-500')}`}>
+                              {item.stock} ({item.status})
+                            </span>
+                          </div>
+                          
+                          <div className="flex">
+                            <span className="w-24 font-medium text-muted-foreground">Price:</span>
+                            <span className="font-bold">Rs {item.price.toFixed(2)}</span>
+                          </div>
+                          
+                          {item.purchasePrice && (
+                            <div className="flex">
+                              <span className="w-24 font-medium text-muted-foreground">Cost Price:</span>
+                              <span>Rs {item.purchasePrice.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
                       </CardContent>
-                      <CardFooter className="p-4 pt-2 flex justify-between items-center">
-                        <p className="font-bold">Rs {item.price.toFixed(2)}</p>
-                        <Button size="sm" variant="secondary" disabled={item.stock <= 0}>
-                          <Plus className="h-4 w-4 mr-1" /> Add
-                        </Button>
-                      </CardFooter>
                     </Card>
                   ))}
-              </div>
-            </TabsContent>
-          ))}
+                </div>
+                
+                {/* Pagination UI for category tabs */}
+                <div className="flex justify-between items-center mt-6 mb-2">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, categoryItems.length)} of {categoryItems.length} items
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={goToPreviousPage} 
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm">
+                      Page {currentPage} of {categoryTotalPages || 1}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={goToNextPage} 
+                      disabled={currentPage === categoryTotalPages || categoryTotalPages === 0}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            )
+          })}
         </Tabs>
       </div>
 

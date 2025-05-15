@@ -15,6 +15,8 @@ const posService = {
       
       if (filters.search) queryParams.append('search', filters.search);
       if (filters.category) queryParams.append('category', filters.category);
+      if (filters.brand) queryParams.append('brand', filters.brand);
+      if (filters.vehicleName) queryParams.append('vehicleName', filters.vehicleName);
       
       const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
       return await api.get(`/inventory${queryString}`);
@@ -139,4 +141,4 @@ const posService = {
   }
 };
 
-export default posService; 
+export default posService;

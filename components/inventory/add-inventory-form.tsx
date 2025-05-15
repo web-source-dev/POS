@@ -52,6 +52,7 @@ export function AddInventoryForm() {
     subcategory: "",
     subcategory2: "",
     brand: "",
+    vehicleName: "",
     price: "",
     description: "",
     
@@ -296,7 +297,8 @@ export function AddInventoryForm() {
         subcategory: formData.subcategory,
         subcategory2: formData.subcategory2,
         brand: formData.brand,
-        supplier: formData.supplier,
+        vehicleName: formData.vehicleName,
+        supplier: formData.supplier ? formData.supplier : null,
         price: Number(formData.price),
         purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : undefined,
         stock: Number(formData.stock),
@@ -686,6 +688,20 @@ export function AddInventoryForm() {
                   )}
                 </div>
                 
+                <div className="space-y-2">
+                  <Label htmlFor="vehicleName" className="font-medium">
+                    Vehicle Name
+                  </Label>
+                  <Input
+                    id="vehicleName"
+                    name="vehicleName"
+                    value={formData.vehicleName}
+                    onChange={handleChange}
+                    className="w-full shadow-sm"
+                    placeholder="e.g., Toyota Corolla, Honda Civic"
+                  />
+                </div>
+                
                 <div className="col-span-2 space-y-2">
                   <Label htmlFor="description" className="font-medium">
                     Description
@@ -820,7 +836,7 @@ export function AddInventoryForm() {
               <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="price" className="font-medium flex gap-1">
-                    Selling Price (Rs) <span className="text-red-500">*</span>
+                    Selling Price per item (Rs) <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="price"
@@ -837,7 +853,7 @@ export function AddInventoryForm() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="purchasePrice" className="font-medium">
-                    Purchase Price (Rs)
+                    Purchase Price per item (Rs)
                   </Label>
                   <div className="relative">
                     <Input
@@ -868,7 +884,7 @@ export function AddInventoryForm() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="taxRate" className="font-medium">
-                    Tax Rate (%)
+                    Tax Rate per item (%)
                   </Label>
                   <Input
                     id="taxRate"
@@ -977,16 +993,19 @@ export function AddInventoryForm() {
                     <option value="pair">Pair</option>
                     <option value="set">Set</option>
                     <option value="case">Case</option>
+                    <option value="std">STD</option>
                   </select>
                 </div>
                 
                 <div className="space-y-2">
+                {formData.unitOfMeasure !== "std" ? (
+                  <>
                   <Label htmlFor="measureValue" className="font-medium">
                     {getMeasureLabel(formData.unitOfMeasure)}
                   </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="measureValue"
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="measureValue"
                       name="measureValue"
                       type="number"
                       min="0"
@@ -1000,6 +1019,12 @@ export function AddInventoryForm() {
                       {getMeasureUnit(formData.unitOfMeasure)}
                     </span>
                   </div>
+                  </>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-10">
+                      Standard Unit
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>

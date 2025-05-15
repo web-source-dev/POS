@@ -77,20 +77,17 @@ export function MonthlyStockAnalysis({ data }) {
   // Get all items from the first month (current month)
   const allItems = currentMonth.itemsStock || [];
   
-  // Calculate total historical stock (what we've had + what we've sold)
-  // For simplicity, we'll estimate it by taking current stock and adding an 
-  // estimated 30% more to account for historical sales
-  const estimatedHistoricalStock = Math.round(currentMonth.totalStock * 1.3);
+  // Use the actual historical stock data from the backend instead of estimating
+  const totalHistoricalStock = currentMonth.totalHistoricalStock || currentMonth.totalStock;
+  const totalSold = currentMonth.totalSold || 0;
   
-  // For each item, estimate historical stock
+  // Use the actual sold quantities and historical stock for each item
   const allItemsWithHistory = allItems.map(item => {
-    // Estimate this item's historical stock by adding 30% to current stock as a placeholder
-    // In a real implementation, you would use actual sales data for this item
-    const estimatedSoldQuantity = Math.round(item.stock * 0.3);
     return {
       ...item,
-      historicalStock: item.stock + estimatedSoldQuantity,
-      soldQuantity: estimatedSoldQuantity
+      // Use the actual values instead of estimating
+      historicalStock: item.historicalStock || item.stock,
+      soldQuantity: item.soldQuantity || 0
     };
   });
   
@@ -99,8 +96,9 @@ export function MonthlyStockAnalysis({ data }) {
     .map(month => ({
       name: `${month.month.slice(0, 3)} ${month.year}`, // Short month name and year
       stock: month.totalStock,
-      // Estimate historical stock for each month
-      historicalStock: Math.round(month.totalStock * 1.3)
+      // Use actual historical stock data
+      historicalStock: month.totalHistoricalStock || month.totalStock,
+      sold: month.totalSold || 0
     }))
     .reverse(); // Reverse to show oldest to newest
   
@@ -117,7 +115,7 @@ export function MonthlyStockAnalysis({ data }) {
       },
       {
         label: 'Sold Items',
-        data: stockTrendData.map(item => item.historicalStock - item.stock),
+        data: stockTrendData.map(item => item.sold),
         backgroundColor: 'rgba(247, 103, 123, 0.6)',
         borderColor: 'rgba(247, 103, 123, 1)',
         borderWidth: 1,
@@ -259,16 +257,25 @@ export function MonthlyStockAnalysis({ data }) {
   const selectedItemHistory = selectedItemId 
     ? monthlyData.map((month) => {
         const itemInMonth = month.itemsStock.find(item => item.id === selectedItemId);
-        const currentStock = itemInMonth ? itemInMonth.stock : 0;
-        // Estimate historical stock by adding 30% (or use real sales data if available)
-        const historicalStock = Math.round(currentStock * 1.3);
+        if (!itemInMonth) return {
+          month: month.month,
+          year: month.year,
+          stock: 0,
+          historicalStock: 0,
+          soldStock: 0,
+          label: `${month.month.substring(0, 3)} ${month.year}`
+        };
+        
+        const currentStock = itemInMonth.stock || 0;
+        const soldStock = itemInMonth.soldQuantity || 0;
+        const historicalStock = itemInMonth.historicalStock || currentStock;
         
         return {
           month: month.month,
           year: month.year,
           stock: currentStock,
           historicalStock: historicalStock,
-          soldStock: historicalStock - currentStock,
+          soldStock: soldStock,
           label: `${month.month.substring(0, 3)} ${month.year}`
         };
       }).reverse()
@@ -411,14 +418,14 @@ export function MonthlyStockAnalysis({ data }) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{estimatedHistoricalStock} units</div>
+            <div className="text-2xl font-bold">{totalHistoricalStock} units</div>
             <div className="flex items-center mt-1">
               <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                ~{estimatedHistoricalStock - currentMonth.totalStock} sold
+                {totalSold} sold
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Estimated total inventory
+              Total inventory history
             </p>
           </CardContent>
         </Card>
