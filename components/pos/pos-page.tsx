@@ -509,7 +509,11 @@ export function POSPage() {
                   className={`cursor-pointer hover:bg-muted/50 transition-colors ${
                     item.stock <= 0 ? 'opacity-50' : ''
                   }`}
-                  onClick={() => item.stock > 0 && addToCart(item)}
+                  onClick={() => {
+                    if (item.stock > 0) {
+                      addToCart(item)
+                    }
+                  }}
                 >
                   <CardHeader className="p-4 pb-2">
                     <CardTitle className="text-base">
@@ -521,7 +525,9 @@ export function POSPage() {
                           disabled={item.stock <= 0}
                           onClick={(e) => {
                             e.stopPropagation();
-                            item.stock > 0 && addToCart(item);
+                            if (item.stock > 0) {
+                              addToCart(item);
+                            }
                           }}
                         >
                           <Plus className="h-4 w-4 mr-1" /> Add
@@ -651,7 +657,11 @@ export function POSPage() {
                       className={`cursor-pointer hover:bg-muted/50 transition-colors ${
                         item.stock <= 0 ? 'opacity-50' : ''
                       }`}
-                      onClick={() => item.stock > 0 && addToCart(item)}
+                      onClick={() => {
+                        if (item.stock > 0) {
+                          addToCart(item)
+                        }
+                      }}
                     >
                       <CardHeader className="p-4 pb-2">
                         <CardTitle className="text-base">
@@ -663,7 +673,9 @@ export function POSPage() {
                               disabled={item.stock <= 0}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                item.stock > 0 && addToCart(item);
+                                if (item.stock > 0) {
+                                  addToCart(item);
+                                }
                               }}
                             >
                               <Plus className="h-4 w-4 mr-1" /> Add
@@ -833,7 +845,10 @@ export function POSPage() {
                           variant="outline"
                           size="icon"
                           className="h-6 w-6 rounded-full"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateQuantity(item.id, item.quantity - 1)
+                          }}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -848,7 +863,10 @@ export function POSPage() {
                           variant="outline"
                           size="icon"
                           className="h-6 w-6 rounded-full"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateQuantity(item.id, item.quantity + 1)
+                          }}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
@@ -860,7 +878,10 @@ export function POSPage() {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/20"
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFromCart(item.id)
+                        }}
                       >
                         <Trash className="h-4 w-4" />
                       </Button>
