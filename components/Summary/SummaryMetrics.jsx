@@ -19,6 +19,14 @@ export function SummaryMetrics({ data, previousData }) {
     totalProfit, 
     averageProfitMargin 
   } = data.summary;
+  
+  // Check if there are any sales data
+  const hasSalesData = [
+    ...data.mostSelling,
+    ...data.mediumSelling,
+    ...data.lowSelling
+  ].some(item => item.salesQuantity > 0);
+  
   // Calculate the total sales quantity
   const totalSalesQuantity = 
     [...data.mostSelling, ...data.mediumSelling, ...data.lowSelling, ...data.notSelling]
@@ -64,7 +72,8 @@ export function SummaryMetrics({ data, previousData }) {
       previousValue: previousData?.summary?.totalRevenue,
       percentChange: previousData?.summary?.totalRevenue 
         ? calculatePercentChange(totalRevenue, previousData.summary.totalRevenue)
-        : null
+        : null,
+      noSalesMessage: 'No sales recorded yet'
     },
     {
       title: 'Total Cost',
@@ -75,7 +84,8 @@ export function SummaryMetrics({ data, previousData }) {
       previousValue: previousData?.summary?.totalCost,
       percentChange: previousData?.summary?.totalCost 
         ? calculatePercentChange(totalCost, previousData.summary.totalCost)
-        : null
+        : null,
+      noSalesMessage: 'No cost from sales'
     },
     {
       title: 'Total Profit',
@@ -86,7 +96,8 @@ export function SummaryMetrics({ data, previousData }) {
       previousValue: previousData?.summary?.totalProfit,
       percentChange: previousData?.summary?.totalProfit 
         ? calculatePercentChange(totalProfit, previousData.summary.totalProfit)
-        : null
+        : null,
+      noSalesMessage: 'No profit data yet'
     },
     {
       title: 'Items Sold',
@@ -98,7 +109,8 @@ export function SummaryMetrics({ data, previousData }) {
       previousValue: previousData?.totalSalesQuantity,
       percentChange: previousData?.totalSalesQuantity
         ? calculatePercentChange(totalSalesQuantity, previousData.totalSalesQuantity)
-        : null
+        : null,
+      noSalesMessage: 'No items sold'
     },
     {
       title: 'Average Profit Margin',
@@ -109,7 +121,8 @@ export function SummaryMetrics({ data, previousData }) {
       previousValue: previousData?.summary?.averageProfitMargin,
       percentChange: previousData?.summary?.averageProfitMargin
         ? calculatePercentChange(averageProfitMargin, previousData.summary.averageProfitMargin)
-        : null
+        : null,
+      noSalesMessage: 'No margin data yet'
     },
   ];
   
@@ -126,28 +139,39 @@ export function SummaryMetrics({ data, previousData }) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold leading-8">{metric.value} {metric.suffix}</div>
-            {metric.percentChange !== null && (
-              <p className="text-xs text-muted-foreground flex items-center mt-2">
-                {metric.percentChange > 0 ? (
-                  <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
-                ) : metric.percentChange < 0 ? (
-                  <TrendingDown className="mr-1 h-3 w-3 text-destructive" />
-                ) : null}
-                <span 
-                  className={
-                    metric.percentChange > 0 
-                      ? 'text-green-500' 
-                      : metric.percentChange < 0 
-                        ? 'text-destructive' 
-                        : ''
-                  }
-                >
-                  {metric.percentChange > 0 ? '+' : ''}
-                  {metric.percentChange.toFixed(2)}%
-                </span>
-                <span className="ml-1">from previous period</span>
-              </p>
+            {hasSalesData ? (
+              <>
+                <div className="text-2xl font-bold leading-8">{metric.value} {metric.suffix}</div>
+                {metric.percentChange !== null && (
+                  <p className="text-xs text-muted-foreground flex items-center mt-2">
+                    {metric.percentChange > 0 ? (
+                      <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
+                    ) : metric.percentChange < 0 ? (
+                      <TrendingDown className="mr-1 h-3 w-3 text-destructive" />
+                    ) : null}
+                    <span 
+                      className={
+                        metric.percentChange > 0 
+                          ? 'text-green-500' 
+                          : metric.percentChange < 0 
+                            ? 'text-destructive' 
+                            : ''
+                      }
+                    >
+                      {metric.percentChange > 0 ? '+' : ''}
+                      {metric.percentChange.toFixed(2)}%
+                    </span>
+                    <span className="ml-1">from previous period</span>
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold leading-8 text-muted-foreground">-</div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {metric.noSalesMessage}
+                </p>
+              </>
             )}
           </CardContent>
         </Card>

@@ -20,6 +20,13 @@ export function InventoryPerformanceTable({ data }) {
   
   if (!data || !data.mostSelling) return null;
   
+  // Check if there are any items with sales
+  const hasSalesData = [
+    ...data.mostSelling,
+    ...data.mediumSelling,
+    ...data.lowSelling
+  ].some(item => item.salesQuantity > 0);
+  
   // Define category map for labels
   const categoryMap = {
     most: {
@@ -78,16 +85,29 @@ export function InventoryPerformanceTable({ data }) {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>{currentCategory.label}</CardTitle>
+        <CardTitle>
+          {hasSalesData ? currentCategory.label : "Inventory Items (No Sales Data)"}
+          {!hasSalesData && <div className="text-sm font-normal text-muted-foreground mt-1">
+            Your inventory items haven't recorded any sales yet.
+          </div>}
+        </CardTitle>
         <div className="flex flex-col md:flex-row md:justify-between gap-4">
-          <Tabs defaultValue="most" className="w-full" onValueChange={setCurrentTab}>
-            <TabsList className="grid grid-cols-4">
-              <TabsTrigger value="most">Most Selling</TabsTrigger>
-              <TabsTrigger value="medium">Medium Selling</TabsTrigger>
-              <TabsTrigger value="low">Low Selling</TabsTrigger>
-              <TabsTrigger value="not">Not Selling</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {hasSalesData ? (
+            <Tabs defaultValue="most" className="w-full" onValueChange={setCurrentTab}>
+              <TabsList className="grid grid-cols-4">
+                <TabsTrigger value="most">Most Selling</TabsTrigger>
+                <TabsTrigger value="medium">Medium Selling</TabsTrigger>
+                <TabsTrigger value="low">Low Selling</TabsTrigger>
+                <TabsTrigger value="not">Not Selling</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          ) : (
+            <Tabs defaultValue="not" className="w-full" onValueChange={setCurrentTab}>
+              <TabsList>
+                <TabsTrigger value="not">All Items</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
           <div className="w-full md:w-1/3">
             <Input
               placeholder="Search items..."

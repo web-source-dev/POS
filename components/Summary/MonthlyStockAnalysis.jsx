@@ -74,6 +74,9 @@ export function MonthlyStockAnalysis({ data }) {
   const currentMonth = monthlyData[0]; // Most recent month
   const previousMonth = monthlyData[1]; // Previous month
   
+  // Check if there are any sales data
+  const hasSalesData = currentMonth.totalSold > 0;
+  
   // Get all items from the first month (current month)
   const allItems = currentMonth.itemsStock || [];
   
@@ -411,7 +414,7 @@ export function MonthlyStockAnalysis({ data }) {
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium leading-tight">
-              Total Historical Stock
+              {hasSalesData ? "Total Historical Stock" : "Total Items"}
             </CardTitle>
             <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-full">
               <History className="h-4 w-4 text-amber-600" />
@@ -419,13 +422,19 @@ export function MonthlyStockAnalysis({ data }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalHistoricalStock} units</div>
-            <div className="flex items-center mt-1">
-              <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                {totalSold} sold
-              </Badge>
-            </div>
+            {hasSalesData ? (
+              <div className="flex items-center mt-1">
+                <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  {totalSold} sold
+                </Badge>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-1">
+                No sales recorded yet
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
-              Total inventory history
+              {hasSalesData ? "Total inventory history" : "Current inventory total"}
             </p>
           </CardContent>
         </Card>
@@ -437,24 +446,29 @@ export function MonthlyStockAnalysis({ data }) {
           <div>
             <CardTitle>Stock Trend Analysis</CardTitle>
             <CardDescription>
-              View your stock levels over time
+              {hasSalesData 
+                ? "View your stock levels over time"
+                : "Stock level history - No sales data recorded yet"
+              }
             </CardDescription>
           </div>
-          <div className="flex items-center">
-            <label className="text-sm mr-2">Show Historical Data</label>
-            <div className="relative inline-block w-10 mr-2 align-middle select-none">
-              <input 
-                type="checkbox" 
-                name="toggle" 
-                id="toggleHistorical" 
-                className="sr-only peer"
-                checked={showHistorical}
-                onChange={() => setShowHistorical(!showHistorical)}
-              />
-              <div className="block h-6 rounded-full bg-gray-200 dark:bg-gray-700 cursor-pointer peer-checked:bg-primary"></div>
-              <div className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4"></div>
+          {hasSalesData && (
+            <div className="flex items-center">
+              <label className="text-sm mr-2">Show Historical Data</label>
+              <div className="relative inline-block w-10 mr-2 align-middle select-none">
+                <input 
+                  type="checkbox" 
+                  name="toggle" 
+                  id="toggleHistorical" 
+                  className="sr-only peer"
+                  checked={showHistorical}
+                  onChange={() => setShowHistorical(!showHistorical)}
+                />
+                <div className="block h-6 rounded-full bg-gray-200 dark:bg-gray-700 cursor-pointer peer-checked:bg-primary"></div>
+                <div className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition peer-checked:translate-x-4"></div>
+              </div>
             </div>
-          </div>
+          )}
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="bar" className="w-full">

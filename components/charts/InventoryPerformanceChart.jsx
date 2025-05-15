@@ -87,6 +87,40 @@ export function InventoryPerformanceChart({ data }) {
   
   if (!data || !data.mostSelling) return null;
   
+  // Check if there are any sales data
+  const hasSalesData = [
+    ...data.mostSelling,
+    ...data.mediumSelling,
+    ...data.lowSelling
+  ].some(item => item.salesQuantity > 0);
+
+  // If no sales data, show appropriate message
+  if (!hasSalesData) {
+    return (
+      <Card className="w-full shadow-sm">
+        <CardHeader className="border-b pb-3">
+          <CardTitle className="text-xl font-bold">Inventory Performance Charts</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <div className="w-full h-[400px] sm:h-[450px] flex flex-col items-center justify-center text-center">
+            <div className="text-muted-foreground mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+            <h3 className="text-xl font-medium mb-2">No Sales Data Available</h3>
+            <p className="text-muted-foreground max-w-md">
+              Your inventory items haven't recorded any sales yet. Once you start making sales, 
+              performance metrics will appear here automatically.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   // Combine all categories for the charts
   const allItems = [
     ...data.mostSelling,
